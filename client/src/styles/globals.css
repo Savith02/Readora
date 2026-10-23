@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Theme tokens: space-separated RGB channels so Tailwind alpha modifiers work. */
+:root {
+  --primary: 27 38 64;          /* ink navy */
+  --primary-fg: 250 245 232;
+  --primary-soft: 228 232 242;
+  --accent: 217 140 20;         /* amber gold */
+  --accent-fg: 38 24 4;
+  --accent-soft: 252 238 205;
+  --accent-ink: 146 86 0;       /* amber that is readable as text on cream */
+  --night: 27 38 64;            /* always-dark panels (boredom break, footer) */
+  --night-fg: 250 245 232;
+  --cover-1: 168 62 74;
+  --cover-2: 38 112 120;
+  --cover-3: 103 64 140;
+  --cover-4: 52 116 80;
+  --cover-5: 176 92 44;
+  --cover-6: 54 98 156;
+  --surface: 250 245 232;       /* cream */
+  --surface-raised: 255 252 245;
+  --surface-sunken: 241 234 216;
+  --ink: 28 32 48;
+  --muted: 98 104 122;
+  --muted-line: 222 213 190;
+  --shadow: 27 38 64;
+}
+
+.dark {
+  --primary: 233 190 96;        /* gold becomes the action color on dark */
+  --primary-fg: 24 20 10;
+  --primary-soft: 48 54 80;
+  --accent: 240 176 56;
+  --accent-fg: 38 24 4;
+  --accent-soft: 70 54 22;
+  --accent-ink: 240 176 56;
+  --night: 31 40 66;
+  --night-fg: 244 238 222;
+  --surface: 17 22 38;
+  --surface-raised: 27 34 54;
+  --surface-sunken: 12 16 28;
+  --ink: 238 234 222;
+  --muted: 160 166 184;
+  --muted-line: 52 60 86;
+  --shadow: 0 0 0;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-surface font-sans text-ink antialiased;
+    overflow-x: hidden;
+  }
+  h1, h2, h3, h4 {
+    @apply font-serif tracking-tight;
+  }
+  :focus-visible {
+    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-surface;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer utilities {
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
