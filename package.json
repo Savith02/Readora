@@ -1,10 +1,10 @@
 {
   "name": "readora",
   "private": true,
-  "workspaces": ["client", "server", "packages/*"],
+  "workspaces": ["frontend", "backend", "packages/*"],
   "scripts": {
-    "dev": "concurrently \"npm run dev -w server\" \"npm run dev -w client\"",
-    "build": "npm run build -w @readora/shared && npm run build -w server && npm run build -w client"
+    "dev": "concurrently \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "build": "npm run build -w @readora/shared && npm run build -w backend && npm run build -w frontend"
   },
   "devDependencies": {
     "concurrently": "^9.0.0"
