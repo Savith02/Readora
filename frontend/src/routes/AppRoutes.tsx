@@ -2,9 +2,12 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import AppLayout from '../components/layout/AppLayout';
 import ComingSoon from '../pages/ComingSoon';
 import Home from '../pages/Home';
+import Login from '../pages/auth/Login';
+import Register from '../pages/auth/Register';
+import ProtectedRoute from './ProtectedRoute';
 
-// Only Home is built. Every other route renders the shared "Coming soon" placeholder
-// until its page exists; swap the element for the real page when it is ready.
+// Pages that are not built yet render the shared "Coming soon" placeholder;
+// swap the element for the real page when it is ready.
 const PLACEHOLDERS = [
   { path: 'search', page: 'Search' },
   { path: 'book/:id', page: 'Book details' },
@@ -12,8 +15,6 @@ const PLACEHOLDERS = [
   { path: 'games', page: 'Games' },
   { path: 'tasks', page: 'Tasks' },
   { path: 'leaderboard', page: 'Leaderboard' },
-  { path: 'login', page: 'Login' },
-  { path: 'profile', page: 'Profile' },
 ] as const;
 
 export default function AppRoutes() {
@@ -21,6 +22,14 @@ export default function AppRoutes() {
     <Routes>
       <Route element={<AppLayout />}>
         <Route index element={<Home />} />
+        <Route path="login" element={<Login />} />
+        <Route path="register" element={<Register />} />
+
+        {/* Needs a logged-in user. Add more login-only pages here. */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="profile" element={<ComingSoon page="Profile" />} />
+        </Route>
+
         {PLACEHOLDERS.map(({ path, page }) => (
           <Route key={path} path={path} element={<ComingSoon page={page} />} />
         ))}

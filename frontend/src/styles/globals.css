@@ -11,6 +11,8 @@
   --accent-fg: 38 24 4;
   --accent-soft: 252 238 205;
   --accent-ink: 146 86 0;       /* amber that is readable as text on cream */
+  --danger: 185 28 28;          /* form errors */
+  --danger-soft: 253 232 232;
   --night: 27 38 64;            /* always-dark panels (boredom break, footer) */
   --night-fg: 250 245 232;
   --cover-1: 168 62 74;
@@ -36,6 +38,8 @@
   --accent-fg: 38 24 4;
   --accent-soft: 70 54 22;
   --accent-ink: 240 176 56;
+  --danger: 252 150 150;
+  --danger-soft: 74 32 38;
   --night: 31 40 66;
   --night-fg: 244 238 222;
   --surface: 17 22 38;
