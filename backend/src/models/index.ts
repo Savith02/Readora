@@ -1,6 +1,7 @@
 // Importing this file registers every model with Mongoose (config/db.ts relies on that
 // to create the collections and indexes).
 export { Badge } from './Badge';
+export { BookCache } from './BookCache';
 export { Bookmark } from './Bookmark';
 export { GameResult } from './GameResult';
 export { PointLog } from './PointLog';

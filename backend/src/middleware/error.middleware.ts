@@ -1,11 +1,13 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 import { logger } from '../utils/logger';
 
-/** Throw this from a handler to send a specific status and message to the client. */
+/** Throw this from a handler to send a specific status and message (plus optional extra fields) to the client. */
 export class HttpError extends Error {
   constructor(
     public readonly status: number,
     message: string,
+    /** Merged into the JSON body, e.g. { externalUrl } on a 403. */
+    public readonly extra?: Record<string, unknown>,
   ) {
     super(message);
     this.name = 'HttpError';
@@ -13,7 +15,7 @@ export class HttpError extends Error {
 }
 
 export const notFound: RequestHandler = (req, res) => {
-  res.status(404).json({ message: `Not found: ${req.method} ${req.originalUrl}` });
+  res.status(404).json({ success: false, message: `Not found: ${req.method} ${req.originalUrl}` });
 };
 
 interface MongoDuplicateKeyError {
@@ -28,19 +30,22 @@ const isDuplicateKey = (err: unknown): err is MongoDuplicateKeyError =>
 // The 4th parameter must stay: Express recognises error handlers by their arity.
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   if (err instanceof HttpError) {
-    res.status(err.status).json({ message: err.message });
+    res.status(err.status).json({ success: false, message: err.message, ...err.extra });
     return;
   }
   if (isDuplicateKey(err)) {
     const field = Object.keys(err.keyPattern ?? {})[0];
-    res.status(409).json({ message: field === 'email' ? 'An account with this email already exists' : 'That value is already in use' });
+    res.status(409).json({
+      success: false,
+      message: field === 'email' ? 'An account with this email already exists' : 'That value is already in use',
+    });
     return;
   }
   if ((err as { type?: string }).type === 'entity.parse.failed') {
-    res.status(400).json({ message: 'Malformed JSON in request body' });
+    res.status(400).json({ success: false, message: 'Malformed JSON in request body' });
     return;
   }
 
   logger.error(`Unhandled error: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`);
-  res.status(500).json({ message: 'Something went wrong on our side. Please try again.' });
+  res.status(500).json({ success: false, message: 'Something went wrong on our side. Please try again.' });
 };

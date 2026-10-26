@@ -1,10 +1,15 @@
 {
   "name": "readora",
   "private": true,
-  "workspaces": ["frontend", "backend", "packages/*"],
+  "workspaces": [
+    "frontend",
+    "backend",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "concurrently \"npm run dev -w backend\" \"npm run dev -w frontend\"",
-    "build": "npm run build -w @readora/shared && npm run build -w backend && npm run build -w frontend"
+    "build": "npm run build -w @readora/shared && npm run build -w backend && npm run build -w frontend",
+    "postinstall": "npm run build -w @readora/shared"
   },
   "devDependencies": {
     "concurrently": "^9.0.0"

@@ -12,6 +12,14 @@ const schema = z.object({
   JWT_SECRET: z.string().min(32, 'must be at least 32 characters'),
   JWT_EXPIRES_IN: z.string().default('7d'),
   CLIENT_ORIGIN: z.string().default('http://localhost:5173'),
+  // Sent in the User-Agent of every request to the book APIs so their operators can reach us.
+  CONTACT_EMAIL: z.email('must be a valid email address'),
+  // Optional. Google Books (metadata only) is switched on when this is set.
+  GOOGLE_BOOKS_API_KEY: z
+    .string()
+    .trim()
+    .optional()
+    .transform((value) => value || undefined),
 });
 
 const parsed = schema.safeParse(process.env);
