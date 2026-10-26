@@ -2,7 +2,7 @@ import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from 'reac
 import { Link } from 'react-router-dom';
 import { cn } from '../../utils/cn';
 
-type Variant = 'primary' | 'secondary' | 'accent' | 'ghost';
+type Variant = 'primary' | 'secondary' | 'accent' | 'ghost' | 'light' | 'glass';
 type Size = 'sm' | 'md' | 'lg';
 
 interface BaseProps {
@@ -26,6 +26,9 @@ const variants: Record<Variant, string> = {
   secondary: 'border border-muted-line bg-surface-raised text-ink hover:border-primary hover:text-primary',
   accent: 'bg-accent text-accent-fg hover:brightness-105 shadow-soft',
   ghost: 'text-ink hover:bg-surface-sunken',
+  // Hero pair: solid "play" button and a translucent "more info" button.
+  light: 'bg-ink text-surface hover:bg-ink/85 shadow-soft',
+  glass: 'bg-ink/20 text-ink backdrop-blur-sm hover:bg-ink/30',
 };
 
 const sizes: Record<Size, string> = {

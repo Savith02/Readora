@@ -2,10 +2,10 @@ import { useMemo, useState } from 'react';
 import { GENRES, getTrendingBooks } from '../../data/mockHome';
 import type { Genre } from '../../data/mockHome';
 import { useAsync } from '../../hooks/useAsync';
-import BookGrid from '../books/BookGrid';
+import BookCard from '../books/BookCard';
+import BookRow, { RowItem } from '../books/BookRow';
 import Chip from '../ui/Chip';
 import Reveal from '../ui/Reveal';
-import SectionHeader from '../ui/SectionHeader';
 
 type Filter = 'All' | Genre;
 
@@ -22,20 +22,26 @@ export default function TrendingBooks() {
 
   if (!books) return null;
 
+  const chips = (
+    <div className="-mx-4 mb-2 flex gap-2 overflow-x-auto px-4 pb-1 scrollbar-none sm:mx-0 sm:flex-wrap sm:px-0" role="group" aria-label="Filter trending books by genre">
+      {FILTERS.map((f) => (
+        <Chip key={f} label={f} selected={filter === f} onSelect={() => setFilter(f)} />
+      ))}
+      <p className="sr-only" role="status">
+        Showing {visible.length} {filter === 'All' ? '' : `${filter} `}books
+      </p>
+    </div>
+  );
+
   return (
-    <section aria-labelledby="trending-title" className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <Reveal>
-        <SectionHeader id="trending-title" title="Popular & trending" subtitle="Classics readers are finishing right now." />
-        <div className="-mx-4 mb-6 flex gap-2 overflow-x-auto px-4 pb-2 scrollbar-none sm:mx-0 sm:flex-wrap sm:px-0" role="group" aria-label="Filter by genre">
-          {FILTERS.map((f) => (
-            <Chip key={f} label={f} selected={filter === f} onSelect={() => setFilter(f)} />
-          ))}
-        </div>
-        <p className="sr-only" role="status">
-          Showing {visible.length} {filter === 'All' ? '' : `${filter} `}books
-        </p>
-        <BookGrid key={filter} books={visible} />
-      </Reveal>
-    </section>
+    <Reveal>
+      <BookRow id="trending-title" title="Trending now" controls={chips} resetKey={filter}>
+        {visible.map((book) => (
+          <RowItem key={book.id}>
+            <BookCard book={book} />
+          </RowItem>
+        ))}
+      </BookRow>
+    </Reveal>
   );
 }

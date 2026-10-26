@@ -10,14 +10,17 @@ export default function LeaderboardSection() {
   if (!entries) return null;
 
   return (
-    <section aria-labelledby="leaderboard-title" className="mx-auto max-w-3xl px-4 py-10 pb-16 sm:px-6 lg:px-8">
-      <Reveal>
+    <section aria-labelledby="leaderboard-title" className="gutter py-8 pb-16">
+      <Reveal className="max-w-3xl">
         <SectionHeader
+          variant="row"
           id="leaderboard-title"
           title="Top readers this week"
           action={{ label: 'See full leaderboard', to: '/leaderboard' }}
         />
-        <LeaderboardPreview entries={entries} />
+        <div>
+          <LeaderboardPreview entries={entries} />
+        </div>
       </Reveal>
     </section>
   );

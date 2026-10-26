@@ -23,7 +23,7 @@ const COLUMNS = [
 export default function Footer() {
   return (
     <footer className="bg-night text-night-fg">
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.5fr_1fr_1fr] lg:px-8">
+      <div className="gutter grid gap-10 py-12 md:grid-cols-[1.5fr_1fr_1fr]">
         <div className="max-w-sm">
           <Logo inverted />
           <p className="mt-4 text-sm text-night-fg/75">
@@ -46,7 +46,7 @@ export default function Footer() {
         ))}
       </div>
       <div className="border-t border-night-fg/15">
-        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-xs text-night-fg/70 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+        <div className="gutter flex flex-col gap-2 py-5 text-xs text-night-fg/70 sm:flex-row sm:items-center sm:justify-between">
           <p>Books from Project Gutenberg (public domain).</p>
           <p>© 2026 Readora</p>
         </div>
