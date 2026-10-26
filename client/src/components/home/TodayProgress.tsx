@@ -19,9 +19,9 @@ export default function TodayProgress() {
   const TrendIcon = delta >= 0 ? TrendingUp : TrendingDown;
 
   return (
-    <section aria-labelledby="progress-title" className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <section aria-labelledby="progress-title" className="gutter py-6">
       <Reveal>
-        <SectionHeader id="progress-title" title="Today's progress" />
+        <SectionHeader variant="row" id="progress-title" title="Today's progress" />
         <div className="grid gap-4 md:grid-cols-3">
           <Card className="flex items-center gap-5">
             <CircularProgress value={goalPct} label="Daily reading goal">

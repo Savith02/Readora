@@ -9,7 +9,7 @@ export default function BoredomBreak() {
   const { data: games } = useAsync(getMiniGames);
 
   return (
-    <section aria-labelledby="break-title" className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <section aria-labelledby="break-title" className="gutter py-8">
       <Reveal>
         <Card tone="night" padding="lg" className="relative overflow-hidden">
           <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-accent/20 blur-2xl" aria-hidden="true" />

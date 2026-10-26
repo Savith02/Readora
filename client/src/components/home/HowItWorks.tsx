@@ -19,7 +19,7 @@ const STEPS: readonly Step[] = [
 
 export default function HowItWorks() {
   return (
-    <section id="how-it-works" aria-labelledby="how-title" className="mx-auto max-w-7xl scroll-mt-20 px-4 py-10 sm:px-6 lg:px-8">
+    <section id="how-it-works" aria-labelledby="how-title" className="gutter scroll-mt-20 py-10">
       <Reveal>
         <SectionHeader id="how-title" align="center" eyebrow="How it works" title="Four steps to a reading habit" />
         <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

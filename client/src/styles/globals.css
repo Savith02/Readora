@@ -79,3 +79,27 @@
     display: none;
   }
 }
+
+@layer components {
+  /* Shared page gutter: Netflix-style wide layout, same edges for navbar, rows and footer. */
+  .gutter {
+    @apply mx-auto w-full max-w-[100rem] px-4 sm:px-8 lg:px-12;
+  }
+
+  /* Generated book covers size their type from the cover width (container query units). */
+  .cover {
+    container-type: inline-size;
+  }
+  .cover-title {
+    font-size: clamp(0.8rem, 11cqw, 2.1rem);
+  }
+  .cover-author {
+    font-size: clamp(0.55rem, 6.2cqw, 0.8rem);
+  }
+
+  /* Big outlined rank numerals for the Top 10 row. */
+  .text-outline {
+    color: transparent;
+    -webkit-text-stroke: 3px rgb(var(--muted) / 0.7);
+  }
+}

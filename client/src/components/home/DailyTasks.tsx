@@ -10,9 +10,10 @@ export default function DailyTasks() {
   if (!tasks) return null;
 
   return (
-    <section aria-labelledby="tasks-title" className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <section aria-labelledby="tasks-title" className="gutter py-6">
       <Reveal>
         <SectionHeader
+          variant="row"
           id="tasks-title"
           title="Daily tasks"
           subtitle="Small goals, real rewards."
