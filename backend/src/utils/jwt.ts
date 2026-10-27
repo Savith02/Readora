@@ -9,6 +9,11 @@ export interface AuthPayload {
   role: Role;
 }
 
+export interface VerifiedToken extends AuthPayload {
+  /** When the token was issued, in seconds since 1970. */
+  issuedAt: number;
+}
+
 const ALGORITHM = 'HS256';
 
 export function signToken({ userId, role }: AuthPayload): string {
@@ -20,10 +25,10 @@ export function signToken({ userId, role }: AuthPayload): string {
 }
 
 /** Throws a JsonWebTokenError / TokenExpiredError when the token is bad. */
-export function verifyToken(token: string): AuthPayload {
+export function verifyToken(token: string): VerifiedToken {
   const decoded = jwt.verify(token, env.JWT_SECRET, { algorithms: [ALGORITHM] });
-  if (typeof decoded === 'string' || !decoded.sub || (decoded.role !== 'user' && decoded.role !== 'admin')) {
+  if (typeof decoded === 'string' || !decoded.sub || typeof decoded.iat !== 'number' || (decoded.role !== 'user' && decoded.role !== 'admin')) {
     throw new jwt.JsonWebTokenError('invalid token payload');
   }
-  return { userId: decoded.sub, role: decoded.role };
+  return { userId: decoded.sub, role: decoded.role, issuedAt: decoded.iat };
 }

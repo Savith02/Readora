@@ -2,8 +2,10 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import AppLayout from '../components/layout/AppLayout';
 import ComingSoon from '../pages/ComingSoon';
 import Home from '../pages/Home';
+import ForgotPassword from '../pages/auth/ForgotPassword';
 import Login from '../pages/auth/Login';
 import Register from '../pages/auth/Register';
+import ResetPassword from '../pages/auth/ResetPassword';
 import ProtectedRoute from './ProtectedRoute';
 
 // Pages that are not built yet render the shared "Coming soon" placeholder;
@@ -24,6 +26,8 @@ export default function AppRoutes() {
         <Route index element={<Home />} />
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Register />} />
+        <Route path="forgot-password" element={<ForgotPassword />} />
+        <Route path="reset-password" element={<ResetPassword />} />
 
         {/* Needs a logged-in user. Add more login-only pages here. */}
         <Route element={<ProtectedRoute />}>

@@ -4,10 +4,11 @@ import type { HydratedDocument } from 'mongoose';
 import { HttpError } from '../middleware/error.middleware';
 import { User } from '../models';
 import type { UserDoc } from '../models/User';
-import type { LoginInput, RegisterInput } from '../validators/auth.validators';
+import { completePasswordReset, requestPasswordReset } from '../services/passwordReset.service';
+import type { ForgotPasswordInput, LoginInput, RegisterInput, ResetPasswordInput } from '../validators/auth.validators';
 import { signToken } from '../utils/jwt';
-
-const BCRYPT_ROUNDS = 12;
+import { logger } from '../utils/logger';
+import { BCRYPT_ROUNDS, hashPassword } from '../utils/password';
 
 // Compared against when the email is unknown, so "no such user" takes as long as "wrong password"
 // and the response time does not reveal which emails have accounts.
@@ -35,7 +36,7 @@ export const register: RequestHandler = async (req, res) => {
 
   if (await User.exists({ email })) throw new HttpError(409, 'An account with this email already exists');
 
-  const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+  const passwordHash = await hashPassword(password);
   const user = await User.create({ name, email, passwordHash });
 
   res.status(201).json(authResponse(user));
@@ -57,4 +58,27 @@ export const me: RequestHandler = async (req, res) => {
   if (!user) throw new HttpError(401, 'Your account could not be found. Please log in again.');
 
   res.json({ user: toPublicUser(user) });
+};
+
+/** Always the same reply, so the form cannot be used to find out which emails have accounts. */
+const FORGOT_PASSWORD_MESSAGE = 'If an account exists for that email, we have sent a link to reset the password.';
+
+export const forgotPassword: RequestHandler = (req, res) => {
+  const { email } = req.body as ForgotPasswordInput;
+
+  // The work (database, email) continues after the reply is sent, so the answer, and how long it
+  // takes, is the same whether or not the email has an account.
+  void requestPasswordReset(email).catch((error: unknown) => {
+    logger.error(`Password reset request failed: ${error instanceof Error ? error.message : String(error)}`);
+  });
+
+  res.json({ message: FORGOT_PASSWORD_MESSAGE });
+};
+
+export const resetPassword: RequestHandler = async (req, res) => {
+  const { token, password } = req.body as ResetPasswordInput;
+
+  await completePasswordReset(token, password);
+
+  res.json({ message: 'Your password has been updated. You can sign in now.' });
 };

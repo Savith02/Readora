@@ -9,8 +9,7 @@ import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import { useAuth } from '../../hooks/useAuth';
 import { parseApiError } from '../../utils/apiError';
-
-const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
+import { EMAIL_PATTERN, passwordProblem } from '../../utils/validation';
 
 interface FieldErrors {
   name?: string;
@@ -18,14 +17,12 @@ interface FieldErrors {
   password?: string;
 }
 
-// Mirrors the backend's rules (backend/src/validators/auth.validators.ts) so mistakes show up before a request is sent.
 function validate(name: string, email: string, password: string): FieldErrors {
   const errors: FieldErrors = {};
   if (name.trim().length < 2) errors.name = 'Name must be at least 2 characters';
   if (!EMAIL_PATTERN.test(email.trim())) errors.email = 'Enter a valid email address';
-  if (password.length < 8) errors.password = 'Password must be at least 8 characters';
-  else if (!/[A-Za-z]/.test(password)) errors.password = 'Password must include a letter';
-  else if (!/\d/.test(password)) errors.password = 'Password must include a number';
+  const problem = passwordProblem(password);
+  if (problem) errors.password = problem;
   return errors;
 }
 

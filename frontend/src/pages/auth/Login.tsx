@@ -9,20 +9,25 @@ import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import { useAuth } from '../../hooks/useAuth';
 import { parseApiError } from '../../utils/apiError';
-
-const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
+import { EMAIL_PATTERN } from '../../utils/validation';
 
 interface FieldErrors {
   email?: string;
   password?: string;
 }
 
+interface LoginLocationState {
+  /** ProtectedRoute sends people here with the page they were trying to open. */
+  from?: { pathname?: string; search?: string };
+  /** A success message from another page, e.g. after a password reset. */
+  notice?: string;
+}
+
 export default function Login() {
   const { user, login } = useAuth();
   const location = useLocation();
-  // ProtectedRoute sends people here with the page they were trying to open.
-  const from = (location.state as { from?: { pathname?: string; search?: string } } | null)?.from;
-  const destination = from?.pathname ? `${from.pathname}${from.search ?? ''}` : '/';
+  const state = location.state as LoginLocationState | null;
+  const destination = state?.from?.pathname ? `${state.from.pathname}${state.from.search ?? ''}` : '/';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -72,6 +77,7 @@ export default function Login() {
       }
     >
       <form onSubmit={onSubmit} noValidate className="space-y-5">
+        <FormAlert tone="success" message={state?.notice ?? ''} />
         <FormAlert message={formError} />
         <Input
           ref={emailRef}
@@ -83,14 +89,21 @@ export default function Login() {
           onChange={(e) => setEmail(e.target.value)}
           error={errors.email}
         />
-        <PasswordInput
-          ref={passwordRef}
-          label="Password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          error={errors.password}
-        />
+        <div className="space-y-2">
+          <PasswordInput
+            ref={passwordRef}
+            label="Password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            error={errors.password}
+          />
+          <div className="flex justify-end">
+            <Link to="/forgot-password" className="rounded text-sm font-medium text-muted transition hover:text-ink hover:underline">
+              Forgot password?
+            </Link>
+          </div>
+        </div>
         <Button type="submit" size="lg" fullWidth disabled={submitting} leftIcon={submitting ? <Loader2 size={18} className="animate-spin" aria-hidden="true" /> : undefined}>
           {submitting ? 'Signing in...' : 'Sign in'}
         </Button>

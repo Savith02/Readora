@@ -33,3 +33,16 @@ export const registerUser = (payload: RegisterPayload) => api.post<AuthResponse>
 export const loginUser = (payload: LoginPayload) => api.post<AuthResponse>('/auth/login', payload).then((r) => r.data);
 
 export const fetchCurrentUser = () => api.get<{ user: AuthUser }>('/auth/me').then((r) => r.data.user);
+
+export interface ResetPasswordPayload {
+  /** The token from the emailed link. */
+  token: string;
+  password: string;
+}
+
+/** Always succeeds with the same message, whether or not the email has an account. */
+export const requestPasswordReset = (email: string) =>
+  api.post<{ message: string }>('/auth/forgot-password', { email }).then((r) => r.data);
+
+export const resetPassword = (payload: ResetPasswordPayload) =>
+  api.post<{ message: string }>('/auth/reset-password', payload).then((r) => r.data);

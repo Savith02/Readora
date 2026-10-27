@@ -5,6 +5,8 @@ export interface ApiErrorInfo {
   message: string;
   /** Per-field messages from the backend's validation, keyed by field name. */
   fields: Record<string, string>;
+  /** The HTTP status, when the server answered at all. */
+  status?: number;
 }
 
 interface ErrorBody {
@@ -24,5 +26,5 @@ export function parseApiError(error: unknown): ApiErrorInfo {
   for (const item of data?.errors ?? []) fields[item.field] ??= item.message; // first message per field
 
   const fallback = status >= 500 ? 'The server is not responding. Please try again in a moment.' : 'Something went wrong. Please try again.';
-  return { message: data?.message ?? fallback, fields };
+  return { message: data?.message ?? fallback, fields, status };
 }
