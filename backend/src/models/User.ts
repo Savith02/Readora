@@ -38,5 +38,7 @@ const userSchema = new Schema(
 // All-time leaderboard.
 userSchema.index({ totalPoints: -1 });
 
+userSchema.index({ role: 1, createdAt: -1 });
+
 export type UserDoc = InferSchemaType<typeof userSchema>;
 export const User = model('User', userSchema);

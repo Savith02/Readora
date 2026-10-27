@@ -1,4 +1,6 @@
 import bcrypt from 'bcryptjs';
+
+
 import type { RequestHandler } from 'express';
 import type { HydratedDocument } from 'mongoose';
 import { HttpError } from '../middleware/error.middleware';
@@ -32,12 +34,14 @@ const authResponse = (user: HydratedDocument<UserDoc>) => ({
 });
 
 export const register: RequestHandler = async (req, res) => {
-  const { name, email, password } = req.body as RegisterInput;
+  const { name, email, password, accountType } = req.body as RegisterInput;
+  const role = accountType === 'admin' ? 'admin' : 'user';
+
 
   if (await User.exists({ email })) throw new HttpError(409, 'An account with this email already exists');
 
   const passwordHash = await hashPassword(password);
-  const user = await User.create({ name, email, passwordHash });
+  const user = await User.create({ name, email, passwordHash, role });
 
   res.status(201).json(authResponse(user));
 };

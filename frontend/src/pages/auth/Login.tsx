@@ -38,7 +38,7 @@ export default function Login() {
   const passwordRef = useRef<HTMLInputElement>(null);
 
   // Already logged in (or just logged in): go where they were headed.
-  if (user) return <Navigate to={destination} replace />;
+  if (user) return <Navigate to={user.role === 'admin' ? '/admin/dashboard' : destination.startsWith('/admin') ? '/' : destination} replace />;
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
