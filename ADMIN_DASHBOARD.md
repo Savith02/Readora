@@ -2,7 +2,7 @@
 
 ## Run
 
-Use the existing environment setup in README.md and backend/.env. No new dependencies or environment variables are required.
+Use the existing environment setup in README.md and backend/.env. No new dependencies or production environment variables are required. See USER_MANAGEMENT.md for the implemented account management module.
 
 ```sh
 npm install
@@ -13,11 +13,9 @@ Open the existing `/login` page. Administrators are redirected to `/admin/dashbo
 
 ## Register through the shared account form
 
-The existing `/register` page has User account and Admin account options. Both use only name, email and password. Selecting Admin account creates an administrator and signs them in immediately at `/admin/dashboard`; selecting User account creates a reader. The shared login also redirects administrators to the dashboard.
+Public registration creates reader accounts only. Administrators use the shared login and are redirected to `/admin/dashboard`. Initial administrator provisioning and subsequent audited role changes are documented in USER_MANAGEMENT.md.
 
-Admin registration is open to anyone who can reach the registration endpoint. The account selector is not proof of administrator authorization. This behavior was explicitly requested; it allows public visitors to obtain administrator access when deployed publicly. No setup code or ADMIN_SIGNUP_CODE environment variable is used.
-
-## Alternatively, promote an existing account
+## Provision the first administrator
 
 1. Register the intended account through the existing registration page and verify its identity through your operational process.
 2. On a trusted machine with authorized database access, configure the existing backend environment for the intended database.
@@ -27,7 +25,7 @@ Admin registration is open to anyone who can reach the registration endpoint. Th
 npm run admin:promote -w backend -- owner@example.com --confirm
 ```
 
-Replace the example with the existing account email. The command only promotes an existing reader; it does not create accounts, change passwords, seed data, or expose a network endpoint. Restrict shell and database access to trusted operators. Log in again through `/login` after promotion. Operators can use this same controlled process for subsequent promotions. No real account was promoted during implementation.
+Replace the example with the existing account email. The command only promotes an existing reader; it does not create accounts, change passwords, seed data, or expose a network endpoint. Restrict shell and database access to trusted operators. Log in again through `/login` after promotion. The command now runs only when no active administrator exists. Use User Management for subsequent promotions. No real account was promoted during implementation.
 
 If the host cannot execute tsx, run `npm run build -w backend`, then from the backend directory run `node dist/scripts/promote-admin.js <existing-account-email> --confirm`.
 
@@ -53,15 +51,13 @@ For a live smoke test with your own accounts: sign in as a reader and verify `/a
 - Points: sum of positive PointLog awards, excluding deductions.
 - User growth: reader registrations by UTC calendar month, including the current partial month.
 - Reading activity: count of page_read ledger events by UTC month. These are reward events, not individual pages or reading sessions.
-- Popular books: top five books by unique reader–book progress records, across recorded progress.
+- Popular books: top five books by unique readerâ€“book progress records, across recorded progress.
 - Most active readers: reader accounts ranked by books with finishedAt recorded.
 - Activity: latest tracked reader registrations and task completions. No publication audit log exists.
-- Account status: explicitly not tracked, because the User model has no suspension/verification status field.
+- Account status is now supported by User Management; the dashboard recent-user summary does not include a status column.
 
 Historical percentage comparisons are omitted. Missing collections return empty states; API errors show retry. An unavailable database produces an error, not fabricated zero statistics. Recent users expose only the required name/email/registration fields to authorized admins; responses disable caching. Existing JWT, password reset and session invalidation remain in place. Authorization reads the database role on every request. Add future admin endpoints to the guarded admin router.
 
 ## Pending
 
-All sidebar management modules (analytics reports, books, genres, authors, reviews, games, tasks, points, badges, users, reading activity, notifications, support, security settings) are explicitly labeled planned pages. No destructive management actions are implemented, so no destructive confirmation dialog is needed yet. Add confirmations when those mutations are introduced. A local book catalog, account-status tracking, session-level reading history, publication audit history, and historical comparisons require future data/model work.
-
-
+All sidebar management modules (analytics reports, books, genres, authors, reviews, games, tasks, points, badges, reading activity, notifications, support, security settings) are explicitly labeled planned pages. User Management now provides account-access confirmation dialogs and audit history; see USER_MANAGEMENT.md. A local book catalog, session-level reading history, publication audit history, and historical comparisons require future data/model work.

@@ -35,10 +35,10 @@ test('shared login and admin API enforce the current database role', async () =>
   const login = (password: string) => fetch(base + '/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'reader@example.test', password }) });
   try {
     const signup = (extra: Record<string, string>) => fetch(base + '/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Test Reader', email: 'reader@example.test', password: 'Test-password123', ...extra }) });
-    const createdAdmin = await signup({ accountType: 'admin' });
-    assert.equal(createdAdmin.status, 201);
-    assert.equal(createdRole, 'admin');
-    assert.equal((await createdAdmin.json() as { user: { role: string } }).user.role, 'admin');
+    const publicAdminAttempt = await signup({ accountType: 'admin' });
+    assert.equal(publicAdminAttempt.status, 201);
+    assert.equal(createdRole, 'user');
+    assert.equal((await publicAdminAttempt.json() as { user: { role: string } }).user.role, 'user');
     assert.equal((await signup({ role: 'admin' })).status, 201);
     assert.equal(createdRole, 'user');
 
@@ -76,6 +76,7 @@ test('shared login and admin API enforce the current database role', async () =>
     role = 'user';
     assert.equal((await request('/admin/dashboard', admin.token)).status, 403);
     const { registerSchema } = await import('../src/validators/auth.validators.js');
+    assert.equal('accountType' in registerSchema.parse({ name: 'Test Reader', email: 'reader@example.test', password: 'Test-password123', accountType: 'admin' }), false);
     assert.equal('role' in registerSchema.parse({ name: 'Test Reader', email: 'reader@example.test', password: 'Test-password123', role: 'admin' }), false);
   } finally {
     User.findOne = originalFindOne;
@@ -86,7 +87,3 @@ test('shared login and admin API enforce the current database role', async () =>
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
   }
 });
-
-
-
-

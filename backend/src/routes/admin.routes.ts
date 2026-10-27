@@ -36,3 +36,6 @@ adminRouter.get('/dashboard', async (req, res) => {
   ].sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 8);
   res.json({ generatedAt: now, stats: { books: null, users, activeReaders: active[0]?.total ?? 0, games, tasks, points: points[0]?.total ?? 0 }, growth: series(growth), reading: series(reading), popular, recentUsers, activity, activeReaders });
 });
+
+import { adminUsersRouter } from './adminUsers.routes';
+adminRouter.use('/users', adminUsersRouter);

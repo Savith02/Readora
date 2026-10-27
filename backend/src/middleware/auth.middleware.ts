@@ -1,4 +1,5 @@
 import type { RequestHandler } from 'express';
+import { isObjectIdOrHexString } from 'mongoose';
 import { User } from '../models';
 import { verifyToken } from '../utils/jwt';
 import type { AuthPayload, VerifiedToken } from '../utils/jwt';
@@ -31,8 +32,11 @@ export const requireAuth: RequestHandler = async (req, _res, next) => {
     throw new HttpError(401, 'Your session has expired. Please log in again.');
   }
 
-  const user = await User.findById(payload.userId).select('role passwordChangedAt').lean();
+  if (!isObjectIdOrHexString(payload.userId)) throw new HttpError(401, 'Invalid session. Please log in again.');
+  const user = await User.findById(payload.userId).select('role status passwordChangedAt +sessionVersion').lean();
   if (!user) throw new HttpError(401, 'Your account could not be found. Please log in again.');
+  if (user.status === 'suspended') throw new HttpError(401, 'Your account is suspended. Please contact support.');
+  if ((payload.sessionVersion ?? 0) !== (user.sessionVersion ?? 0)) throw new HttpError(401, 'Your session has ended. Please log in again.');
 
   // Compared in whole seconds (the token's resolution), so a token issued right after the change still works.
   if (user.passwordChangedAt && payload.issuedAt < Math.floor(user.passwordChangedAt.getTime() / 1000)) {
