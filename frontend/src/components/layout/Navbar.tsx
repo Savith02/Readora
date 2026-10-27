@@ -1,16 +1,18 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Menu, Moon, Search, Sun, X } from 'lucide-react';
+import { LogOut, Menu, Moon, Search, Sun, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { getUserSummary } from '../../data/mockHome';
-import { useAsync } from '../../hooks/useAsync';
+import { useAuth } from '../../hooks/useAuth';
 import { useTheme } from '../../hooks/useTheme';
 import { cn } from '../../utils/cn';
 import SearchBar from '../books/SearchBar';
 import PointsBadge from '../gamification/PointsBadge';
 import StreakCounter from '../gamification/StreakCounter';
+import Button from '../ui/Button';
+import Avatar from './Avatar';
 import Logo from './Logo';
+import UserMenu from './UserMenu';
 
 const NAV_LINKS = [
   { label: 'Home', to: '/' },
@@ -29,21 +31,13 @@ const drawerLinkClass = ({ isActive }: { isActive: boolean }) =>
     isActive ? 'bg-primary-soft text-primary' : 'text-ink hover:bg-surface-sunken',
   );
 
-function Avatar({ name, className }: { name: string; className?: string }) {
-  return (
-    <span aria-hidden="true" className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent font-semibold text-accent-fg', className)}>
-      {name[0]?.toUpperCase()}
-    </span>
-  );
-}
-
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { pathname } = useLocation();
   const { theme, toggle } = useTheme();
-  const { data: user } = useAsync(getUserSummary);
+  const { user, logout } = useAuth();
   const reduce = useReducedMotion();
 
   // On Home the bar floats over the billboard and turns solid once the page scrolls.
@@ -70,6 +64,7 @@ export default function Navbar() {
   }, [open]);
 
   const ThemeIcon = theme === 'dark' ? Sun : Moon;
+  const closeDrawer = () => setOpen(false);
 
   return (
     // `dark` over the billboard forces light-on-dark colors there, whichever theme the page uses.
@@ -116,8 +111,8 @@ export default function Navbar() {
           )}
           {user && (
             <div className="hidden items-center gap-2 md:flex">
-              <PointsBadge points={user.points} />
-              <StreakCounter days={user.streak} />
+              <PointsBadge points={user.totalPoints} />
+              <StreakCounter days={user.currentStreak} />
             </div>
           )}
           <button
@@ -128,10 +123,12 @@ export default function Navbar() {
           >
             <ThemeIcon size={20} aria-hidden="true" />
           </button>
-          {user && (
-            <Link to="/profile" aria-label={`${user.name}, profile`} className="hidden rounded-md lg:block">
-              <Avatar name={user.name} />
-            </Link>
+          {user ? (
+            <UserMenu user={user} onLogout={logout} />
+          ) : (
+            <Button to="/login" variant="accent" size="sm" className="hidden sm:inline-flex">
+              Login
+            </Button>
           )}
           <button
             type="button"
@@ -156,7 +153,7 @@ export default function Navbar() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                onClick={() => setOpen(false)}
+                onClick={closeDrawer}
                 aria-hidden="true"
               />
               <motion.aside
@@ -174,7 +171,7 @@ export default function Navbar() {
                   <Logo />
                   <button
                     type="button"
-                    onClick={() => setOpen(false)}
+                    onClick={closeDrawer}
                     aria-label="Close menu"
                     className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-surface-sunken"
                   >
@@ -183,7 +180,7 @@ export default function Navbar() {
                 </div>
                 {user && (
                   <>
-                    <Link to="/profile" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-xl bg-surface-sunken p-3">
+                    <Link to="/profile" onClick={closeDrawer} className="flex items-center gap-3 rounded-xl bg-surface-sunken p-3">
                       <Avatar name={user.name} className="h-10 w-10" />
                       <span className="min-w-0">
                         <span className="block truncate font-semibold">{user.name}</span>
@@ -191,18 +188,42 @@ export default function Navbar() {
                       </span>
                     </Link>
                     <div className="flex items-center gap-2">
-                      <PointsBadge points={user.points} />
-                      <StreakCounter days={user.streak} />
+                      <PointsBadge points={user.totalPoints} />
+                      <StreakCounter days={user.currentStreak} />
                     </div>
                   </>
                 )}
                 <nav aria-label="Mobile" className="flex flex-col gap-1">
                   {NAV_LINKS.map((l) => (
-                    <NavLink key={l.to} to={l.to} end={l.to === '/'} className={drawerLinkClass} onClick={() => setOpen(false)}>
+                    <NavLink key={l.to} to={l.to} end={l.to === '/'} className={drawerLinkClass} onClick={closeDrawer}>
                       {l.label}
                     </NavLink>
                   ))}
                 </nav>
+                <div className="mt-auto flex flex-col gap-2">
+                  {user ? (
+                    <Button
+                      variant="secondary"
+                      fullWidth
+                      leftIcon={<LogOut size={16} aria-hidden="true" />}
+                      onClick={() => {
+                        closeDrawer();
+                        logout();
+                      }}
+                    >
+                      Log out
+                    </Button>
+                  ) : (
+                    <>
+                      <Button to="/login" variant="accent" fullWidth onClick={closeDrawer}>
+                        Login
+                      </Button>
+                      <Button to="/register" variant="secondary" fullWidth onClick={closeDrawer}>
+                        Create account
+                      </Button>
+                    </>
+                  )}
+                </div>
               </motion.aside>
             </div>
           )}

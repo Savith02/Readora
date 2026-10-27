@@ -24,12 +24,6 @@ export interface FeaturedBook extends Book {
   description: string;
 }
 
-export interface UserSummary {
-  name: string;
-  points: number;
-  streak: number;
-}
-
 export interface TodayStats {
   pagesRead: number;
   dailyGoal: number;
@@ -157,8 +151,6 @@ const CONTINUE_PROGRESS: ReadonlyArray<readonly [id: string, progress: number]> 
   ['11', 15],
 ];
 
-const USER: UserSummary = { name: 'Savith', points: 1250, streak: 7 };
-
 const TODAY: TodayStats = {
   pagesRead: 14,
   dailyGoal: 20,
@@ -189,7 +181,6 @@ const LEADERBOARD: LeaderboardEntry[] = [
 
 const resolve = <T,>(value: T): Promise<T> => Promise.resolve(value);
 
-export const getUserSummary = () => resolve(USER);
 export const getTodayStats = () => resolve(TODAY);
 export const getDailyTasks = () => resolve(TASKS);
 export const getMiniGames = () => resolve(GAMES);

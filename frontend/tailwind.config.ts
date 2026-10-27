@@ -30,6 +30,10 @@ export default {
           fg: token('night-fg'),
         },
         ink: token('ink'),
+        danger: {
+          DEFAULT: token('danger'),
+          soft: token('danger-soft'),
+        },
         muted: {
           DEFAULT: token('muted'),
           line: token('muted-line'),

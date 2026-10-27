@@ -17,6 +17,12 @@ const userSchema = new Schema(
     passwordHash: { type: String, required: true, select: false },
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
 
+    /** Login tokens issued before this moment are refused, so a password reset signs out every other session. */
+    passwordChangedAt: { type: Date },
+    /** SHA-256 of the secret in the emailed reset link (never the secret itself). Removed once used or replaced. */
+    resetTokenHash: { type: String, select: false },
+    resetTokenExpiresAt: { type: Date, select: false },
+
     totalPoints: { type: Number, default: 0, min: 0 },
     currentStreak: { type: Number, default: 0, min: 0 },
     longestStreak: { type: Number, default: 0, min: 0 },
