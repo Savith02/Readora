@@ -7,7 +7,7 @@ import { useAuth } from '../../hooks/useAuth';
 
 // Keep these names stable: AppRoutes uses them to register the existing planned pages.
 export const modules = ['Reports & Analytics', 'Manage Books', 'Categories & Genres', 'Authors', 'Reviews & Ratings', 'Games Management', 'Tasks & Challenges', 'Leaderboard & Points', 'Achievements & Badges', 'User Management', 'Reading Activity', 'Notifications', 'Feedback & Support', 'Admin Settings & Security'];
-export const modulePath = (name: string) => name === 'User Management' ? 'users' : name.toLowerCase().replace(/[^a-z]+/g, '-').replace(/-$/, '');
+export const modulePath = (name: string) => name === 'User Management' ? 'users' : name === 'Admin Settings & Security' ? 'settings' : name.toLowerCase().replace(/[^a-z]+/g, '-').replace(/-$/, '');
 const groups = [
   { label: 'Overview', items: [{ name: 'Dashboard', icon: LayoutDashboard }, { name: modules[0], icon: BarChart3 }] },
   { label: 'Library Management', items: [{ name: modules[1], icon: BookOpen }, { name: modules[2], icon: FolderTree }, { name: modules[3], icon: PenLine }, { name: modules[4], icon: Star }] },
@@ -44,7 +44,7 @@ export default function AdminLayout() {
     {groups.map(group => <div key={group.label}>
       {compact ? <div className="mx-3 mb-3 h-px bg-muted-line/60" /> : <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">{group.label}</p>}
       <div className="space-y-1">{group.items.map(({ name, icon: Icon }) => {
-        const planned = name !== 'Dashboard' && name !== 'User Management';
+        const planned = name !== 'Dashboard' && name !== 'User Management' && name !== 'Admin Settings & Security';
         return <NavLink key={name} to={`/admin/${name === 'Dashboard' ? 'dashboard' : modulePath(name)}`} onClick={() => { if (mobileOpen) closeDrawer(); }} title={compact ? `${name}${planned ? ' (planned)' : ''}` : undefined} className={({ isActive }) => `group flex min-h-11 items-center rounded-xl border text-[13px] font-medium transition-colors ${compact ? 'justify-center px-2' : 'gap-3 px-3'} ${isActive ? 'border-accent/20 bg-accent/10 text-accent' : 'border-transparent text-muted hover:bg-surface-sunken hover:text-ink'}`}>
           <Icon size={17} strokeWidth={1.8} className="shrink-0" aria-hidden="true" />
           <span className={compact ? 'sr-only' : 'min-w-0 flex-1'}>{name}</span>
@@ -54,10 +54,10 @@ export default function AdminLayout() {
     </div>)}
   </nav>;
   const profile = (compact = false) => <div className="shrink-0 border-t border-muted-line/60 p-3">
-    <div className={`flex items-center gap-3 rounded-xl bg-surface-sunken/60 p-2 ${compact ? 'justify-center' : ''}`}>
+    <Link to="/admin/settings" aria-label="Open your admin profile settings" title={compact ? 'Profile settings' : undefined} onClick={() => { if (mobileOpen) closeDrawer(); }} className={`flex items-center gap-3 rounded-xl bg-surface-sunken/60 p-2 transition hover:bg-accent/10 ${compact ? 'justify-center' : ''}`}>
       <Avatar name={user?.name ?? 'Admin'} className="h-9 w-9 rounded-xl bg-accent/15 text-accent" />
       {!compact && <div className="min-w-0"><p className="truncate text-sm font-semibold" title={user?.name}>{user?.name}</p><p className="mt-0.5 text-[11px] text-muted">Administrator</p></div>}
-    </div>
+    </Link>
     <button type="button" title={compact ? 'Logout' : undefined} onClick={signOut} className={`mt-2 flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm text-muted transition hover:bg-danger/10 hover:text-danger ${compact ? 'justify-center' : ''}`}><LogOut size={17} aria-hidden="true" /><span className={compact ? 'sr-only' : ''}>Logout</span></button>
   </div>;
 

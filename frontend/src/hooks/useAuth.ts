@@ -6,6 +6,7 @@ export function useAuth() {
   const login = useAuthStore((s) => s.login);
   const register = useAuthStore((s) => s.register);
   const logout = useAuthStore((s) => s.logout);
+  const updateAdminName = useAuthStore((s) => s.updateAdminName);
 
-  return { user, isAuthenticated: user !== null, initializing, login, register, logout };
+  return { user, isAuthenticated: user !== null, initializing, login, register, logout, updateAdminName };
 }
