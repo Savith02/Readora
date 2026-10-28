@@ -16,7 +16,7 @@ test('real MongoDB user management queries, suspension, audit and concurrent adm
   const database = `readora_um_test_${randomBytes(8).toString('hex')}`;
   const mongoose = (await import('mongoose')).default;
   const { app } = await import('../src/app.js');
-  const { User, ReadingProgress, GameResult, UserTask, Task, PointLog, Badge, AdminAuditLog, AdminMutationLock } = await import('../src/models/index.js');
+  const { User, ReadingProgress, GameResult, UserTask, Task, PointLog, Badge, AdminAuditLog, AdminMutationLock, PlatformSettings } = await import('../src/models/index.js');
   const { hashPassword } = await import('../src/utils/password.js');
   const { signToken } = await import('../src/utils/jwt.js');
   const { changeUserAccess } = await import('../src/services/adminUsers.service.js');
@@ -140,6 +140,42 @@ test('real MongoDB user management queries, suspension, audit and concurrent adm
     assert.equal((await securityLogin(reset.password)).status, 200);
     await User.updateOne({ _id: securityAdmin._id }, { $set: { status: 'suspended' } });
     assert.equal((await securityLogin(reset.password)).status, 403);
+    // Platform settings are exercised in the same isolated database, never the live singleton.
+    const { DEFAULT_PLATFORM_SETTINGS } = await import('@readora/shared');
+    const remainingAdmin = await User.findOne({ role: 'admin', status: { $ne: 'suspended' } }).select('+sessionVersion');
+    assert.ok(remainingAdmin);
+    const platformToken = signToken({ userId: remainingAdmin.id, role: 'admin', sessionVersion: remainingAdmin.sessionVersion ?? 0 });
+    assert.deepEqual(await (await call('/platform-settings', '')).json(), { settings: DEFAULT_PLATFORM_SETTINGS });
+    assert.equal(await PlatformSettings.countDocuments(), 0);
+    const readerBeforeSettings = await User.findById(reader._id).lean();
+    const settingsResults = await Promise.all(['Library One', 'Library Two'].map(displayName => call('/admin/platform-settings', platformToken, { revision: 0, settings: { ...DEFAULT_PLATFORM_SETTINGS, displayName } })));
+    assert.deepEqual(settingsResults.map(result => result.status).sort(), [200, 409]);
+    assert.equal(await PlatformSettings.countDocuments(), 1);
+    assert.equal(await AdminAuditLog.countDocuments({ action: 'platform_settings_update' }), 1);
+    const saved: any = await (await call('/admin/platform-settings', platformToken)).json();
+    assert.equal(saved.revision, 1);
+    assert.deepEqual(await (await call('/platform-settings', '')).json(), { settings: saved.settings });
+    assert.equal((await call('/admin/platform-settings', platformToken, saved)).status, 200); // no-op creates no duplicate audit
+    assert.equal(await AdminAuditLog.countDocuments({ action: 'platform_settings_update' }), 1);
+    AdminAuditLog.create = (async () => { throw new Error('Injected platform audit failure'); }) as unknown as typeof AdminAuditLog.create;
+    try { assert.equal((await call('/admin/platform-settings', platformToken, { revision: 1, settings: DEFAULT_PLATFORM_SETTINGS })).status, 500); }
+    finally { AdminAuditLog.create = originalCreate; }
+    assert.deepEqual(await (await call('/admin/platform-settings', platformToken)).json(), saved);
+    assert.equal(await AdminAuditLog.countDocuments({ action: 'platform_settings_update' }), 1);
+    const published = { ...DEFAULT_PLATFORM_SETTINGS, displayName: 'Public Library', logoStyle: 'app-icon', supportEmail: 'contact@example.test', announcementEnabled: true, announcementText: 'Upcoming maintenance window.' };
+    assert.equal((await call('/admin/platform-settings', platformToken, { revision: 1, settings: published })).status, 200);
+    assert.deepEqual(await (await call('/platform-settings', '')).json(), { settings: published });
+    assert.equal(await AdminAuditLog.countDocuments({ action: 'platform_settings_update' }), 2);
+    assert.deepEqual(await User.findById(reader._id).lean(), readerBeforeSettings);
+    assert.deepEqual(await ReadingProgress.findById(progress._id).lean(), beforeProgress);
+    assert.deepEqual(await PointLog.find({ userId: reader._id }).lean(), beforeLedger);
+    const signup = await post('/auth/register', '', { name: 'New Platform Reader', email: 'platform-reader@example.test', password: 'Platform-Reader123', role: 'admin' });
+    assert.equal(signup.status, 201);
+    const signupBody: any = await signup.json();
+    assert.equal(signupBody.user.role, 'user'); assert.equal(signupBody.user.dailyGoalPages, 20);
+    assert.equal((await call('/auth/me', signupBody.token)).status, 200);
+    for (const path of ['/admin/dashboard', '/admin/users', '/admin/profile', '/admin/security', '/admin/audit-logs', '/admin/platform-settings']) assert.equal((await call(path, signupBody.token)).status, 403);
+    assert.equal((await post('/auth/login', '', { email: 'platform-reader@example.test', password: 'Platform-Reader123' })).status, 200);
   } finally {
     if (server) await new Promise<void>((resolve, reject) => server!.close(error => error ? reject(error) : resolve()));
     if (mongoose.connection.readyState === 1 && mongoose.connection.name === database && /^readora_um_test_[a-f0-9]{16}$/.test(database)) await mongoose.connection.dropDatabase();

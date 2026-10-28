@@ -1,6 +1,6 @@
 import { Schema, model } from 'mongoose';
 
-export const AUDIT_ACTIONS = ['suspend', 'reactivate', 'role_change', 'bootstrap_admin', 'password_change', 'sessions_revoked'] as const;
+export const AUDIT_ACTIONS = ['suspend', 'reactivate', 'role_change', 'bootstrap_admin', 'password_change', 'sessions_revoked', 'platform_settings_update'] as const;
 
 // No update/delete HTTP endpoints. Sensitive credentials are never accepted as audit metadata.
 const adminAuditSchema = new Schema({

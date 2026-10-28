@@ -4,6 +4,7 @@ import { Activity, Award, BarChart3, Bell, BookOpen, ChevronRight, FolderTree, G
 import Logo from '../../components/layout/Logo';
 import Avatar from '../../components/layout/Avatar';
 import { useAuth } from '../../hooks/useAuth';
+import { usePlatformSettings } from '../../store/platformSettingsStore';
 
 // Keep these names stable: AppRoutes uses them to register the existing planned pages.
 export const modules = ['Reports & Analytics', 'Manage Books', 'Categories & Genres', 'Authors', 'Reviews & Ratings', 'Games Management', 'Tasks & Challenges', 'Leaderboard & Points', 'Achievements & Badges', 'User Management', 'Reading Activity', 'Notifications', 'Feedback & Support', 'Admin Settings & Security'];
@@ -18,6 +19,7 @@ const groups = [
 
 export default function AdminLayout() {
   const { user, logout } = useAuth();
+  const displayName = usePlatformSettings(state => state.settings.displayName);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const drawer = useRef<HTMLDialogElement>(null);
@@ -65,7 +67,7 @@ export default function AdminLayout() {
     <a href="#admin-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-accent focus:p-3 focus:text-accent-fg">Skip to content</a>
     <aside id="admin-sidebar" aria-label="Admin sidebar" className={`fixed inset-y-0 left-0 z-20 hidden flex-col border-r border-muted-line/60 bg-surface-raised lg:flex ${collapsed ? 'w-20' : 'w-72'}`}>
       <div className={`flex h-20 shrink-0 items-center border-b border-muted-line/60 ${collapsed ? 'justify-center' : 'justify-between px-6'}`}>
-        {collapsed ? <Link to="/" aria-label="Readora home" className="rounded-xl bg-accent p-2 text-accent-fg"><BookOpen size={23} aria-hidden="true" /></Link> : <Logo inverted />}
+        {collapsed ? <Logo compact inverted /> : <Logo inverted />}
         {!collapsed && <span className="rounded-md border border-accent/20 px-2 py-1 text-[9px] uppercase tracking-wider text-accent">Admin</span>}
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-3">{navigation(collapsed)}</div>
@@ -80,7 +82,7 @@ export default function AdminLayout() {
     <div className={`min-w-0 ${collapsed ? 'lg:pl-20' : 'lg:pl-72'}`}>
       <header className="flex h-20 items-center justify-between gap-3 border-b border-muted-line/60 bg-surface/95 px-4 sm:px-8">
         <div className="flex min-w-0 items-center gap-3"><button type="button" aria-label="Open admin navigation" aria-haspopup="dialog" aria-controls="admin-mobile-navigation" aria-expanded={mobileOpen} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-surface-raised lg:hidden" onClick={() => { drawer.current?.showModal(); setMobileOpen(true); }}><Menu size={22} /></button><div className="flex min-w-0 items-center gap-2 text-xs"><span className="hidden text-muted sm:inline">Administration</span><ChevronRight size={13} className="hidden text-muted sm:block" aria-hidden="true" /><span className="truncate font-medium">{currentPage}</span></div></div>
-        <div className="flex shrink-0 items-center gap-3"><Link to="/" className="rounded-lg px-2 py-2 text-xs text-muted transition hover:text-accent">View Readora <span aria-hidden="true">&#8599;</span></Link><span className="h-6 w-px bg-muted-line" /><Avatar name={user?.name ?? 'Admin'} className="h-8 w-8 rounded-full bg-accent/15 text-accent" /></div>
+        <div className="flex shrink-0 items-center gap-3"><Link to="/" className="max-w-[7rem] truncate rounded-lg px-2 py-2 text-xs text-muted transition hover:text-accent sm:max-w-[12rem]">View {displayName} <span aria-hidden="true">&#8599;</span></Link><span className="h-6 w-px bg-muted-line" /><Avatar name={user?.name ?? 'Admin'} className="h-8 w-8 rounded-full bg-accent/15 text-accent" /></div>
       </header>
       <main id="admin-content" tabIndex={-1} className="mx-auto min-w-0 max-w-[1600px] p-4 outline-none sm:p-6 xl:p-8"><Outlet /></main>
     </div>

@@ -85,7 +85,7 @@ export default function Navbar() {
       />
 
       <div className="gutter flex h-16 items-center justify-between gap-3">
-        <div className={cn('flex items-center gap-8', searchOpen && 'max-sm:hidden')}>
+        <div className={cn('flex min-w-0 items-center gap-8', searchOpen && 'max-sm:hidden')}>
           <Logo />
           <nav aria-label="Main" className="hidden items-center lg:flex">
             {NAV_LINKS.map((l) => (

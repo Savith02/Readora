@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import Logo from './Logo';
+import { usePlatformSettings } from '../../store/platformSettingsStore';
 
 const COLUMNS = [
   {
@@ -21,14 +22,16 @@ const COLUMNS = [
 ] as const;
 
 export default function Footer() {
+  const settings = usePlatformSettings(state => state.settings);
   return (
     <footer className="bg-night text-night-fg">
       <div className="gutter grid gap-10 py-12 md:grid-cols-[1.5fr_1fr_1fr]">
         <div className="max-w-sm">
           <Logo inverted />
-          <p className="mt-4 text-sm text-night-fg/75">
-            Read. Play. Achieve. Turn reading into a habit you love with streaks, quick breaks and friendly competition.
+          <p className="mt-4 break-words text-sm text-night-fg/75">
+            {settings.description}
           </p>
+          {settings.supportEmail && <a href={`mailto:${settings.supportEmail}`} className="mt-3 inline-block break-all text-sm text-accent hover:underline">{settings.supportEmail}</a>}
         </div>
         {COLUMNS.map((col) => (
           <nav key={col.title} aria-label={col.title}>
@@ -48,7 +51,7 @@ export default function Footer() {
       <div className="border-t border-night-fg/15">
         <div className="gutter flex flex-col gap-2 py-5 text-xs text-night-fg/70 sm:flex-row sm:items-center sm:justify-between">
           <p>Books from Project Gutenberg (public domain).</p>
-          <p>© 2026 Readora</p>
+          <p className="break-words">© 2026 {settings.displayName}</p>
         </div>
       </div>
     </footer>
