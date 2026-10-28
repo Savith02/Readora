@@ -184,7 +184,7 @@ export default function Navbar() {
                       <Avatar name={user.name} className="h-10 w-10" />
                       <span className="min-w-0">
                         <span className="block truncate font-semibold">{user.name}</span>
-                        <span className="block text-xs text-muted">View profile</span>
+                        <span className="block text-xs text-muted">{user.role === 'admin' ? 'Administrator account' : 'Reader account'} � View profile</span>
                       </span>
                     </Link>
                     <div className="flex items-center gap-2">
@@ -193,7 +193,7 @@ export default function Navbar() {
                     </div>
                   </>
                 )}
-                <nav aria-label="Mobile" className="flex flex-col gap-1">
+                <nav aria-label="Mobile" className="flex flex-col gap-1">{user?.role === 'admin' && <NavLink to="/admin/dashboard" className={drawerLinkClass} onClick={closeDrawer}>Admin Dashboard</NavLink>}
                   {NAV_LINKS.map((l) => (
                     <NavLink key={l.to} to={l.to} end={l.to === '/'} className={drawerLinkClass} onClick={closeDrawer}>
                       {l.label}

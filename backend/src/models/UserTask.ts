@@ -21,5 +21,7 @@ userTaskSchema.index({ userId: 1, taskId: 1, periodKey: 1 }, { unique: true });
 // "Today's tasks" for a user.
 userTaskSchema.index({ userId: 1, periodKey: 1 });
 
+userTaskSchema.index({ completed: 1, completedAt: -1 });
+
 export type UserTaskDoc = InferSchemaType<typeof userTaskSchema>;
 export const UserTask = model('UserTask', userTaskSchema);

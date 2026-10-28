@@ -5,3 +5,6 @@ import { authRouter } from './auth.routes';
 export const apiRouter = Router();
 
 apiRouter.use('/auth', authRouter);
+
+import { adminRouter } from './admin.routes';
+apiRouter.use('/admin', adminRouter);
