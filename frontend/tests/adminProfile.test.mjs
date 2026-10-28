@@ -53,6 +53,34 @@ test('profile saves synchronize existing auth state safely', { timeout: 15000 },
         api.defaults.adapter = () => { throw new Error('Request should not be sent'); };
         await assert.rejects(useAuthStore.getState().updateAdminName('Updated Admin'), /Administrator access required/);
       });
+      await t.test('password changes and global sign-out clear the current session only after success', async () => {
+        const payload = { currentPassword: 'Original-pass123', newPassword: 'Changed-pass456', confirmPassword: 'Changed-pass456' };
+        for (const action of ['changeAdminPassword', 'signOutAdminSessions']) {
+          reset();
+          api.defaults.adapter = async config => {
+            assert.equal(config.method, 'post');
+            assert.equal(config.url, action === 'changeAdminPassword' ? '/admin/security/change-password' : '/admin/security/sign-out-all');
+            assert.deepEqual(JSON.parse(config.data), action === 'changeAdminPassword' ? payload : { currentPassword: payload.currentPassword });
+            return { data: { message: 'Please sign in again.' }, status: 200, statusText: 'OK', headers: {}, config };
+          };
+          const result = await useAuthStore.getState()[action](action === 'changeAdminPassword' ? payload : payload.currentPassword);
+          assert.equal(result.signedOut, true); assert.equal(useAuthStore.getState().user, null); assert.equal(getToken(), null);
+        }
+      });
+      await t.test('failed security request preserves the authenticated session', async () => {
+        reset(); api.defaults.adapter = async () => { throw new Error('Current password is incorrect'); };
+        await assert.rejects(useAuthStore.getState().signOutAdminSessions('Incorrect'), /incorrect/);
+        assert.deepEqual(useAuthStore.getState().user, user); assert.equal(getToken(), 'existing-session-token');
+      });
+      await t.test('late security success does not sign out a replacement session', async () => {
+        reset(); let complete;
+        api.defaults.adapter = config => new Promise(resolve => { complete = () => resolve({ data: { message: 'Signed out' }, status: 200, statusText: 'OK', headers: {}, config }); });
+        const pending = useAuthStore.getState().signOutAdminSessions('Original-pass123');
+        while (!complete) await new Promise(resolve => setImmediate(resolve));
+        const replacement = { ...user, id: 'replacement-admin', name: 'Replacement' };
+        setToken('replacement-session'); useAuthStore.setState({ user: replacement }); complete();
+        assert.equal((await pending).signedOut, false); assert.deepEqual(useAuthStore.getState().user, replacement); assert.equal(getToken(), 'replacement-session');
+      });
     } finally { api.defaults.adapter = originalAdapter; }
   } finally {
     await vite.close();

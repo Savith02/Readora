@@ -5,6 +5,8 @@ import { setUnauthorizedHandler } from '../api/client';
 import { clearToken, getToken, setToken } from '../utils/tokenStorage';
 import { updateAdminProfile } from '../api/adminProfile.api';
 import type { AdminProfile } from '../api/adminProfile.api';
+import { changeAdminPassword, signOutAdminSessions } from '../api/adminSecurity.api';
+import type { PasswordChangePayload, SecurityMessage } from '../api/adminSecurity.api';
 
 interface AuthState {
   user: AuthUser | null;
@@ -15,6 +17,18 @@ interface AuthState {
   register: (payload: RegisterPayload) => Promise<void>;
   logout: () => void;
   updateAdminName: (name: string) => Promise<AdminProfile>;
+  changeAdminPassword: (payload: PasswordChangePayload) => Promise<SecurityMessage & { signedOut: boolean }>;
+  signOutAdminSessions: (currentPassword: string) => Promise<SecurityMessage & { signedOut: boolean }>;
+}
+
+async function completeSecurityAction(request: () => Promise<SecurityMessage>, get: () => AuthState) {
+  const current = get().user;
+  const token = getToken();
+  if (!current || current.role !== 'admin') throw new Error('Administrator access required.');
+  const result = await request();
+  const signedOut = get().user?.id === current.id && getToken() === token;
+  if (signedOut) get().logout();
+  return { ...result, signedOut };
 }
 
 // React StrictMode runs effects twice in development; this keeps init to a single request.
@@ -64,6 +78,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
     return profile;
   },
+
+  changeAdminPassword: payload => completeSecurityAction(() => changeAdminPassword(payload), get),
+  signOutAdminSessions: password => completeSecurityAction(() => signOutAdminSessions(password), get),
 
   logout: () => {
     clearToken();

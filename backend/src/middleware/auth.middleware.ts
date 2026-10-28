@@ -43,6 +43,6 @@ export const requireAuth: RequestHandler = async (req, _res, next) => {
     throw new HttpError(401, 'Your password was changed. Please log in again.');
   }
 
-  req.auth = { userId: payload.userId, role: user.role };
+  req.auth = { userId: payload.userId, role: user.role, sessionVersion: payload.sessionVersion ?? 0 };
   next();
 };

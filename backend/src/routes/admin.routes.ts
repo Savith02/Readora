@@ -4,11 +4,13 @@ import { requireAdmin } from '../middleware/admin.middleware';
 import { HttpError } from '../middleware/error.middleware';
 import { User, ReadingProgress, GameResult, UserTask, PointLog } from '../models';
 import { adminProfileRouter } from './adminProfile.routes';
+import { adminSecurityRouter } from './adminSecurity.routes';
 
 export const adminRouter = Router();
 adminRouter.use(requireAuth, requireAdmin);
 adminRouter.use((_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 adminRouter.use('/profile', adminProfileRouter);
+adminRouter.use('/security', adminSecurityRouter);
 adminRouter.get('/dashboard', async (req, res) => {
   const months = Number(req.query.months ?? 6);
   if (![3, 6, 12].includes(months)) throw new HttpError(400, 'Choose 3, 6 or 12 months');

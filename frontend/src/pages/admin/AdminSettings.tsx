@@ -1,7 +1,7 @@
+import AdminSecurity from '../../components/admin/AdminSecurity';
 import { useEffect, useId, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
-import { CalendarDays, Check, ChevronRight, CircleAlert, Info, Loader2, LockKeyhole, Mail, RefreshCw, ShieldCheck, UserRound } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { CalendarDays, Check, ChevronRight, CircleAlert, Info, Loader2, Mail, RefreshCw, ShieldCheck, UserRound } from 'lucide-react';
 import { fetchAdminProfile } from '../../api/adminProfile.api';
 import type { AdminProfile } from '../../api/adminProfile.api';
 import Avatar from '../../components/layout/Avatar';
@@ -14,7 +14,7 @@ import { parseApiError } from '../../utils/apiError';
 const sections = [
   { key: 'profile', title: 'Admin profile', description: 'Your name and identity', icon: UserRound },
   { key: 'account', title: 'Account details', description: 'Email and membership', icon: Mail },
-  { key: 'security', title: 'Access & security', description: 'Your account permissions', icon: ShieldCheck },
+  { key: 'security', title: 'Access & security', description: 'Passwords and sessions', icon: ShieldCheck },
 ] as const;
 type Section = typeof sections[number]['key'];
 const joined = (value: string | null) => value ? new Date(value).toLocaleDateString(undefined, { dateStyle: 'long' }) : 'Not recorded';
@@ -81,7 +81,7 @@ export default function AdminSettings() {
             </Card>
           </section>
           <section role="tabpanel" id={`${tabId}-panel-account`} aria-labelledby={`${tabId}-account`} hidden={section !== 'account'} tabIndex={0} className="min-w-0 rounded-2xl"><Card className="min-w-0 border-muted-line/60"><h2 className="text-xl font-semibold">Account details</h2><p className="mt-2 text-xs leading-relaxed text-muted">The details associated with your Readora account.</p><dl className="mt-6 divide-y divide-muted-line/60"><div className="py-4"><dt className="flex items-center gap-2 text-xs text-muted"><Mail size={15} aria-hidden="true" />Email address</dt><dd className="mt-2 break-all text-sm">{profile.email}</dd></div><div className="py-4"><dt className="flex items-center gap-2 text-xs text-muted"><CalendarDays size={15} aria-hidden="true" />Account created</dt><dd className="mt-2 text-sm">{joined(profile.createdAt)}</dd></div><div className="py-4"><dt className="text-xs text-muted">Account role</dt><dd className="mt-2 text-sm">Administrator</dd></div><div className="py-4"><dt className="text-xs text-muted">Account status</dt><dd className="mt-2 text-sm capitalize">{profile.status}</dd></div></dl><p className="mt-4 flex items-start gap-2 rounded-xl bg-surface-sunken p-4 text-xs leading-relaxed text-muted"><Info size={16} className="shrink-0" aria-hidden="true" />Email, role and status are read-only in profile settings.</p></Card></section>
-          <section role="tabpanel" id={`${tabId}-panel-security`} aria-labelledby={`${tabId}-security`} hidden={section !== 'security'} tabIndex={0} className="min-w-0 rounded-2xl"><Card className="min-w-0 border-muted-line/60"><span className="mb-4 inline-flex rounded-xl bg-accent/10 p-3 text-accent"><LockKeyhole size={23} aria-hidden="true" /></span><h2 className="text-xl font-semibold">Access & security</h2><p className="mt-3 text-sm leading-relaxed text-muted">Administrator access uses your existing Readora sign-in and account role. Profile edits do not change your email, password, permissions, points or active session.</p><div className="mt-6 rounded-xl border border-muted-line/60 bg-surface-sunken/50 p-4"><h3 className="font-sans text-sm font-semibold">Account access management</h3><p className="mt-2 text-xs leading-relaxed text-muted">Role and status changes are managed separately in User Management. You cannot change your own role or status there.</p><Link to="/admin/users" className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg text-xs font-semibold text-accent hover:underline">Open User Management<ChevronRight size={14} aria-hidden="true" /></Link></div></Card></section>
+          <section role="tabpanel" id={`${tabId}-panel-security`} aria-labelledby={`${tabId}-security`} hidden={section !== 'security'} tabIndex={0} className="min-w-0 rounded-2xl"><AdminSecurity /></section>
         </>}
       </div>
     </div>

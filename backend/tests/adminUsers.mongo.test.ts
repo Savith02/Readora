@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import type { AddressInfo } from 'node:net';
 import dotenv from 'dotenv';
 
@@ -96,6 +96,37 @@ test('real MongoDB user management queries, suspension, audit and concurrent adm
     assert.equal(result.filter(row => row.status === 'fulfilled').length, 1);
     assert.equal(await User.countDocuments({ role: 'admin', status: { $ne: 'suspended' } }), 1);
     assert.equal(await AdminAuditLog.countDocuments({ action: 'role_change' }), 1);
+    // Security fixtures are created only in this generated database, after admin-count checks.
+    const securityAdmin = await User.create({ name: 'Security Operator', email: 'security@example.test', role: 'admin', passwordHash });
+    await User.collection.updateOne({ _id: securityAdmin._id }, { $unset: { sessionVersion: '' } });
+    const oldSecurityToken = signToken({ userId: securityAdmin.id, role: 'admin' });
+    const post = (path: string, token: string, body: unknown) => fetch(base + path, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const securityLogin = (password: string) => post('/auth/login', '', { email: securityAdmin.email, password });
+    const choices = ['Replacement-Password123', 'Replacement-Password456'];
+    const passwordResults = await Promise.all(choices.map(password => post('/admin/security/change-password', oldSecurityToken, { currentPassword: 'Integration-Password123', newPassword: password, confirmPassword: password })));
+    assert.deepEqual(passwordResults.map(result => result.status).sort(), [200, 401]);
+    const acceptedPassword = choices[passwordResults.findIndex(result => result.status === 200)];
+    assert.equal((await call('/auth/me', oldSecurityToken)).status, 401);
+    assert.equal((await securityLogin('Integration-Password123')).status, 401);
+    const passwordLogin = await securityLogin(acceptedPassword); assert.equal(passwordLogin.status, 200);
+    const passwordToken = (await passwordLogin.json() as { token: string }).token;
+    const metadata: any = await (await call('/admin/security', passwordToken)).json();
+    assert.ok(metadata.security.passwordChangedAt); assert.deepEqual(Object.keys(metadata.security), ['passwordChangedAt']);
+    assert.equal((await post('/admin/security/sign-out-all', passwordToken, { currentPassword: 'Wrong123' })).status, 403);
+    assert.equal((await post('/admin/security/sign-out-all', passwordToken, { currentPassword: acceptedPassword })).status, 200);
+    assert.equal((await call('/auth/me', passwordToken)).status, 401);
+    const afterSignOut: any = await (await securityLogin(acceptedPassword)).json();
+    assert.equal((await call('/auth/me', afterSignOut.token)).status, 200);
+    const secret = randomBytes(32).toString('hex');
+    await User.updateOne({ _id: securityAdmin._id }, { $set: { resetTokenHash: createHash('sha256').update(secret).digest('hex'), resetTokenExpiresAt: new Date(Date.now() + 60000) } });
+    const reset = { token: `${securityAdmin.id}.${secret}`, password: 'Reset-Password789' };
+    assert.equal((await post('/auth/reset-password', '', reset)).status, 200);
+    assert.equal((await post('/auth/reset-password', '', reset)).status, 400);
+    assert.equal((await call('/auth/me', afterSignOut.token)).status, 401);
+    assert.equal((await securityLogin(acceptedPassword)).status, 401);
+    assert.equal((await securityLogin(reset.password)).status, 200);
+    await User.updateOne({ _id: securityAdmin._id }, { $set: { status: 'suspended' } });
+    assert.equal((await securityLogin(reset.password)).status, 403);
   } finally {
     if (server) await new Promise<void>((resolve, reject) => server!.close(error => error ? reject(error) : resolve()));
     if (mongoose.connection.readyState === 1 && mongoose.connection.name === database && /^readora_um_test_[a-f0-9]{16}$/.test(database)) await mongoose.connection.dropDatabase();

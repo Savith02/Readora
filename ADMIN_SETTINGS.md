@@ -44,3 +44,5 @@ Modified: backend/src/controllers/auth.controller.ts (export existing safe seria
 - The extended real MongoDB suite was separately enabled and passed using a generated temporary database, which was removed. No production account names or other records were changed.
 - git diff --check passed. There is no lint script configured.
 - Browser capture was available, but Readora was signed out. Desktop/mobile visual interaction checks remain pending an administrator session; automated tests do not assert absence of browser layout overflow.
+
+Password changes and global session revocation are now implemented in the Access & security panel. See ADMIN_SECURITY.md for endpoint contracts, recent-password verification, session-version concurrency checks and reset compatibility. No individual device/session inventory is tracked.

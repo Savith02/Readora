@@ -6,7 +6,7 @@ const email = z.string().trim().toLowerCase().pipe(z.email('Enter a valid email 
 const withinBcryptLimit = (value: string) => Buffer.byteLength(value, 'utf8') <= 72;
 
 /** The rules for choosing a password (sign-up and reset). Login only checks that one was entered. */
-const newPassword = z
+export const newPassword = z
   .string()
   .min(8, 'Password must be at least 8 characters')
   .regex(/[A-Za-z]/, 'Password must include a letter')
