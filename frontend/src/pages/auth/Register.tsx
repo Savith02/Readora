@@ -35,7 +35,7 @@ export default function Register() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [accountType, setAccountType] = useState<'user' | 'admin'>('user');
+
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -64,7 +64,7 @@ export default function Register() {
 
     setSubmitting(true);
     try {
-      await register({ name: name.trim(), email: email.trim(), password, accountType });
+      await register({ name: name.trim(), email: email.trim(), password });
     } catch (error) {
       const { message, fields } = parseApiError(error);
       const serverErrors: FieldErrors = { name: fields.name, email: fields.email, password: fields.password };
@@ -78,8 +78,8 @@ export default function Register() {
 
   return (
     <AuthShell
-      title={accountType === 'admin' ? 'Create an admin account' : 'Create your account'}
-      subtitle={accountType === 'admin' ? 'Set up your Readora administrator account.' : 'Join Readora to read, play, and earn points.'}
+      title="Create your account"
+      subtitle="Join Readora to read, play, and earn points."
       footer={
         <p>
           Already have an account?{' '}
@@ -91,15 +91,6 @@ export default function Register() {
     >
       <form onSubmit={onSubmit} noValidate className="space-y-5">
         <FormAlert message={formError} />
-        <fieldset disabled={submitting}>
-          <legend className="mb-2 text-sm font-medium">Create account as</legend>
-          <div className="grid grid-cols-2 gap-3">
-            {(['user', 'admin'] as const).map(type => <label key={type} className={`flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition ${accountType === type ? 'border-accent bg-accent/10 text-accent-ink' : 'border-muted-line hover:bg-surface-sunken'}`}>
-              <input type="radio" name="accountType" value={type} checked={accountType === type} className="h-4 w-4 accent-[rgb(var(--accent))]" onChange={() => { setAccountType(type); setErrors({}); setFormError(''); }} />
-              {type === 'admin' ? 'Admin account' : 'User account'}
-            </label>)}
-          </div>
-        </fieldset>
         <Input ref={nameRef} label="Name" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} error={errors.name} />
         <Input
           ref={emailRef}
@@ -121,7 +112,7 @@ export default function Register() {
           error={errors.password}
         />
         <Button type="submit" size="lg" fullWidth disabled={submitting} leftIcon={submitting ? <Loader2 size={18} className="animate-spin" aria-hidden="true" /> : undefined}>
-          {submitting ? 'Creating account...' : accountType === 'admin' ? 'Create admin account' : 'Create user account'}
+          {submitting ? 'Creating account...' : 'Create account'}
         </Button>
       </form>
     </AuthShell>

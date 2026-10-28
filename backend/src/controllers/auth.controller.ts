@@ -29,13 +29,13 @@ const toPublicUser = (user: HydratedDocument<UserDoc>) => ({
 });
 
 const authResponse = (user: HydratedDocument<UserDoc>) => ({
-  token: signToken({ userId: user.id as string, role: user.role }),
+  token: signToken({ userId: user.id as string, role: user.role, sessionVersion: user.sessionVersion ?? 0 }),
   user: toPublicUser(user),
 });
 
 export const register: RequestHandler = async (req, res) => {
-  const { name, email, password, accountType } = req.body as RegisterInput;
-  const role = accountType === 'admin' ? 'admin' : 'user';
+  const { name, email, password } = req.body as RegisterInput;
+  const role = 'user';
 
 
   if (await User.exists({ email })) throw new HttpError(409, 'An account with this email already exists');
@@ -49,9 +49,10 @@ export const register: RequestHandler = async (req, res) => {
 export const login: RequestHandler = async (req, res) => {
   const { email, password } = req.body as LoginInput;
 
-  const user = await User.findOne({ email }).select('+passwordHash');
+  const user = await User.findOne({ email }).select('+passwordHash +sessionVersion');
   const matches = await bcrypt.compare(password, user?.passwordHash ?? TIMING_HASH);
   if (!user || !matches) throw new HttpError(401, 'Invalid email or password');
+  if (user.status === 'suspended') throw new HttpError(403, 'Your account is suspended. Please contact support.');
 
   res.json(authResponse(user));
 };

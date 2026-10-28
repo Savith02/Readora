@@ -1,3 +1,5 @@
+import AdminUsers from '../pages/admin/AdminUsers';
+import AdminUserProfile from '../pages/admin/AdminUserProfile';
 import AdminRoute from './AdminRoute';
 import AdminLayout, { modules, modulePath } from '../pages/admin/AdminLayout';
 import AdminDashboard from '../pages/admin/AdminDashboard';
@@ -30,7 +32,10 @@ export default function AppRoutes() {
           <Route path="admin" element={<AdminLayout />}>
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<AdminDashboard />} />
-            {modules.map(name => <Route key={name} path={modulePath(name)} element={<div className="rounded-2xl border border-muted-line bg-surface-raised p-8"><p className="text-xs uppercase tracking-widest text-accent">Planned module</p><h1 className="mt-3 text-3xl">{name}</h1><p className="mt-3 text-muted">This module is not implemented yet. Management actions will be available in a later phase.</p></div>} />)}
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="users/:userId" element={<AdminUserProfile />} />
+            <Route path="user-management" element={<Navigate to="/admin/users" replace />} />
+            {modules.filter(name => name !== 'User Management').map(name => <Route key={name} path={modulePath(name)} element={<div className="rounded-2xl border border-muted-line bg-surface-raised p-8"><p className="text-xs uppercase tracking-widest text-accent">Planned module</p><h1 className="mt-3 text-3xl">{name}</h1><p className="mt-3 text-muted">This module is not implemented yet. Management actions will be available in a later phase.</p></div>} />)}
             <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
           </Route>
         </Route>

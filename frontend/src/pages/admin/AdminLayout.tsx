@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Activity, Award, BarChart3, Bell, BookOpen, ChevronRight, FolderTree, Gamepad2, LayoutDashboard, ListChecks, LogOut, Menu, MessageCircle, PanelLeftClose, PanelLeftOpen, PenLine, ShieldCheck, Star, Trophy, Users, X } from 'lucide-react';
 import Logo from '../../components/layout/Logo';
@@ -7,7 +7,7 @@ import { useAuth } from '../../hooks/useAuth';
 
 // Keep these names stable: AppRoutes uses them to register the existing planned pages.
 export const modules = ['Reports & Analytics', 'Manage Books', 'Categories & Genres', 'Authors', 'Reviews & Ratings', 'Games Management', 'Tasks & Challenges', 'Leaderboard & Points', 'Achievements & Badges', 'User Management', 'Reading Activity', 'Notifications', 'Feedback & Support', 'Admin Settings & Security'];
-export const modulePath = (name: string) => name.toLowerCase().replace(/[^a-z]+/g, '-').replace(/-$/, '');
+export const modulePath = (name: string) => name === 'User Management' ? 'users' : name.toLowerCase().replace(/[^a-z]+/g, '-').replace(/-$/, '');
 const groups = [
   { label: 'Overview', items: [{ name: 'Dashboard', icon: LayoutDashboard }, { name: modules[0], icon: BarChart3 }] },
   { label: 'Library Management', items: [{ name: modules[1], icon: BookOpen }, { name: modules[2], icon: FolderTree }, { name: modules[3], icon: PenLine }, { name: modules[4], icon: Star }] },
@@ -37,15 +37,15 @@ export default function AdminLayout() {
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = previous; };
   }, [mobileOpen]);
-  const currentPage = location.pathname.endsWith('/dashboard') ? 'Dashboard' : modules.find(name => location.pathname.endsWith(`/${modulePath(name)}`)) ?? 'Administration';
+  const currentPage = location.pathname.startsWith('/admin/users') ? 'User Management' : location.pathname.endsWith('/dashboard') ? 'Dashboard' : modules.find(name => location.pathname.endsWith(`/${modulePath(name)}`)) ?? 'Administration';
   const signOut = () => { closeDrawer(); logout(); navigate('/login', { replace: true }); };
 
   const navigation = (compact = false) => <nav aria-label="Administration" className="space-y-5 py-5">
     {groups.map(group => <div key={group.label}>
       {compact ? <div className="mx-3 mb-3 h-px bg-muted-line/60" /> : <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">{group.label}</p>}
       <div className="space-y-1">{group.items.map(({ name, icon: Icon }) => {
-        const planned = name !== 'Dashboard';
-        return <NavLink key={name} to={`/admin/${planned ? modulePath(name) : 'dashboard'}`} onClick={() => { if (mobileOpen) closeDrawer(); }} title={compact ? `${name}${planned ? ' (planned)' : ''}` : undefined} className={({ isActive }) => `group flex min-h-11 items-center rounded-xl border text-[13px] font-medium transition-colors ${compact ? 'justify-center px-2' : 'gap-3 px-3'} ${isActive ? 'border-accent/20 bg-accent/10 text-accent' : 'border-transparent text-muted hover:bg-surface-sunken hover:text-ink'}`}>
+        const planned = name !== 'Dashboard' && name !== 'User Management';
+        return <NavLink key={name} to={`/admin/${name === 'Dashboard' ? 'dashboard' : modulePath(name)}`} onClick={() => { if (mobileOpen) closeDrawer(); }} title={compact ? `${name}${planned ? ' (planned)' : ''}` : undefined} className={({ isActive }) => `group flex min-h-11 items-center rounded-xl border text-[13px] font-medium transition-colors ${compact ? 'justify-center px-2' : 'gap-3 px-3'} ${isActive ? 'border-accent/20 bg-accent/10 text-accent' : 'border-transparent text-muted hover:bg-surface-sunken hover:text-ink'}`}>
           <Icon size={17} strokeWidth={1.8} className="shrink-0" aria-hidden="true" />
           <span className={compact ? 'sr-only' : 'min-w-0 flex-1'}>{name}</span>
           {planned && <span className={compact ? 'sr-only' : 'rounded border border-muted-line/60 px-1.5 py-0.5 text-[9px] font-normal text-muted'}>{compact ? '(planned)' : 'Soon'}</span>}

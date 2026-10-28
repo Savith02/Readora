@@ -21,7 +21,6 @@ export interface RegisterPayload {
   name: string;
   email: string;
   password: string;
-  accountType?: 'user' | 'admin';
 }
 
 export interface LoginPayload {
