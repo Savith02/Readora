@@ -84,6 +84,17 @@ test('real MongoDB user management queries, suspension, audit and concurrent adm
     assert.deepEqual(await PointLog.find({ userId: reader._id }).lean(), beforeLedger);
     assert.equal((await User.findById(reader._id))!.totalPoints, 25);
     assert.equal(await AdminAuditLog.countDocuments({ targetUserId: reader._id }), 2);
+    const directory: any = await (await call('/admin/users?role=admin&search=Operator&status=active&sort=newest&pageSize=10')).json();
+    assert.equal(directory.total, 1); assert.equal(directory.users[0]._id, admin.id);
+    assert.equal((await call('/admin/audit-logs', readerToken)).status, 401); // reader token was invalidated above
+    const day = new Date().toISOString().slice(0, 10);
+    const history: any = await (await call(`/admin/audit-logs?action=suspend&from=${day}&to=${day}&pageSize=10`)).json();
+    assert.equal(history.total, 1); assert.equal(history.logs[0].administratorId.name, 'Updated Test Operator');
+    assert.equal(history.logs[0].targetUserId.name, 'Reader Alpha');
+    assert.equal(history.logs[0].administratorId.email, undefined);
+    const history2: any = await (await call('/admin/audit-logs?page=2&pageSize=10')).json(); assert.equal(history2.logs.length, 0); assert.equal(history2.total, 2);
+    const userHistory: any = await (await call(`/admin/users/${reader.id}/audit-logs`)).json(); assert.equal(userHistory.logs[0].targetUserId, reader.id);
+    for (const method of ['POST', 'PATCH', 'DELETE']) assert.equal((await fetch(base + '/admin/audit-logs', { method, headers: { Authorization: `Bearer ${adminToken}` } })).status, 404);
     // Force a real audit failure after the user write. The MongoDB transaction must abort both.
     const originalCreate = AdminAuditLog.create;
     AdminAuditLog.create = (async () => { throw new Error('Injected audit failure'); }) as unknown as typeof AdminAuditLog.create;
@@ -105,6 +116,7 @@ test('real MongoDB user management queries, suspension, audit and concurrent adm
     const choices = ['Replacement-Password123', 'Replacement-Password456'];
     const passwordResults = await Promise.all(choices.map(password => post('/admin/security/change-password', oldSecurityToken, { currentPassword: 'Integration-Password123', newPassword: password, confirmPassword: password })));
     assert.deepEqual(passwordResults.map(result => result.status).sort(), [200, 401]);
+    assert.equal(await AdminAuditLog.countDocuments({ targetUserId: securityAdmin._id, action: 'password_change' }), 1);
     const acceptedPassword = choices[passwordResults.findIndex(result => result.status === 200)];
     assert.equal((await call('/auth/me', oldSecurityToken)).status, 401);
     assert.equal((await securityLogin('Integration-Password123')).status, 401);
@@ -114,6 +126,7 @@ test('real MongoDB user management queries, suspension, audit and concurrent adm
     assert.ok(metadata.security.passwordChangedAt); assert.deepEqual(Object.keys(metadata.security), ['passwordChangedAt']);
     assert.equal((await post('/admin/security/sign-out-all', passwordToken, { currentPassword: 'Wrong123' })).status, 403);
     assert.equal((await post('/admin/security/sign-out-all', passwordToken, { currentPassword: acceptedPassword })).status, 200);
+    assert.equal(await AdminAuditLog.countDocuments({ targetUserId: securityAdmin._id, action: 'sessions_revoked' }), 1);
     assert.equal((await call('/auth/me', passwordToken)).status, 401);
     const afterSignOut: any = await (await securityLogin(acceptedPassword)).json();
     assert.equal((await call('/auth/me', afterSignOut.token)).status, 200);

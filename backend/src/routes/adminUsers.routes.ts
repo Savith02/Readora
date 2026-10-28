@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { Types, isObjectIdOrHexString } from 'mongoose';
 import { rateLimit } from 'express-rate-limit';
-import { User, ReadingProgress, GameResult, UserTask, PointLog, AdminAuditLog } from '../models';
+import { User, ReadingProgress, GameResult, UserTask, PointLog } from '../models';
+import { getAuditHistory } from '../services/adminAudit.service';
 import { HttpError } from '../middleware/error.middleware';
 import { validate } from '../middleware/validate.middleware';
 import { accountStatus, changeUserAccess, userFilter, USER_FIELDS } from '../services/adminUsers.service';
@@ -42,11 +43,7 @@ adminUsersRouter.get('/:userId/audit-logs', async (req, res) => {
   const { page } = parseQuery(auditQuerySchema, req.query);
   const targetUserId = String(req.params.userId);
   if (!await User.exists({ _id: targetUserId })) throw new HttpError(404, 'User not found');
-  const [total, logs] = await Promise.all([
-    AdminAuditLog.countDocuments({ targetUserId }),
-    AdminAuditLog.find({ targetUserId }).sort({ createdAt: -1, _id: -1 }).skip((page - 1) * 10).limit(10).select('administratorId targetUserId action reason previous next createdAt').populate('administratorId', 'name').lean(),
-  ]);
-  res.json({ logs, total, page, pageSize: 10, totalPages: Math.ceil(total / 10) });
+  res.json(await getAuditHistory({ page, pageSize: 10 }, targetUserId));
 });
 
 export function currentPeriods(now = new Date()) {

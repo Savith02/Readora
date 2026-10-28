@@ -1,4 +1,6 @@
 import bcrypt from 'bcryptjs';
+import mongoose from 'mongoose';
+import { AdminAuditLog } from '../models/AdminAuditLog';
 import { Router } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import { User } from '../models';
@@ -31,17 +33,23 @@ adminSecurityRouter.post('/change-password', limiter, validate(changePasswordSch
   const user = await verifiedAccount(req.auth!, req.body.currentPassword);
   if (await bcrypt.compare(req.body.newPassword, user.passwordHash)) throw new HttpError(400, 'Choose a new password different from your current password.');
   const passwordHash = await hashPassword(req.body.newPassword);
-  const result = await User.updateOne(unchanged(req.auth!, user.passwordHash), {
-    $set: { passwordHash, passwordChangedAt: new Date() },
-    $inc: { sessionVersion: 1 },
-    $unset: { resetTokenHash: '', resetTokenExpiresAt: '' },
-  }, { runValidators: true });
-  if (result.modifiedCount !== 1) throw new HttpError(401, 'Your account changed during this request. Please sign in again.');
+  await mongoose.connection.transaction(async session => {
+    const result = await User.updateOne(unchanged(req.auth!, user.passwordHash), {
+      $set: { passwordHash, passwordChangedAt: new Date() },
+      $inc: { sessionVersion: 1 },
+      $unset: { resetTokenHash: '', resetTokenExpiresAt: '' },
+    }, { runValidators: true, session });
+    if (result.modifiedCount !== 1) throw new HttpError(401, 'Your account changed during this request. Please sign in again.');
+    await AdminAuditLog.create([{ administratorId: user._id, targetUserId: user._id, action: 'password_change', reason: 'Administrator changed own password.', previous: 'Previous password', next: 'Password changed; previous sessions revoked' }], { session });
+  });
   res.json({ message: 'Your password has been changed. All previous sessions have ended. Please sign in again.' });
 });
 adminSecurityRouter.post('/sign-out-all', limiter, validate(endSessionsSchema), async (req, res) => {
   const user = await verifiedAccount(req.auth!, req.body.currentPassword);
-  const result = await User.updateOne(unchanged(req.auth!, user.passwordHash), { $inc: { sessionVersion: 1 } });
-  if (result.modifiedCount !== 1) throw new HttpError(401, 'Your account changed during this request. Please sign in again.');
+  await mongoose.connection.transaction(async session => {
+    const result = await User.updateOne(unchanged(req.auth!, user.passwordHash), { $inc: { sessionVersion: 1 } }, { session });
+    if (result.modifiedCount !== 1) throw new HttpError(401, 'Your account changed during this request. Please sign in again.');
+    await AdminAuditLog.create([{ administratorId: user._id, targetUserId: user._id, action: 'sessions_revoked', reason: 'Administrator signed out all sessions.', previous: 'Previous sessions', next: 'Previous sessions revoked' }], { session });
+  });
   res.json({ message: 'All previous sessions have ended. Please sign in again.' });
 });
