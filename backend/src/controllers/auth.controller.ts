@@ -17,7 +17,7 @@ import { BCRYPT_ROUNDS, hashPassword } from '../utils/password';
 const TIMING_HASH = bcrypt.hashSync('readora-timing-equaliser', BCRYPT_ROUNDS);
 
 /** The user fields that are safe to send to the browser (never the password hash). */
-const toPublicUser = (user: HydratedDocument<UserDoc>) => ({
+export const toPublicUser = (user: HydratedDocument<UserDoc>) => ({
   id: user.id as string,
   name: user.name,
   email: user.email,

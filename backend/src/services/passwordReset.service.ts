@@ -63,7 +63,7 @@ export async function completePasswordReset(token: string, newPassword: string):
   // while that exact token is still stored, so two requests with one link cannot both win.
   const result = await User.updateOne(
     { _id: user._id, resetTokenHash: stored },
-    { $set: { passwordHash, passwordChangedAt: new Date() }, $unset: { resetTokenHash: '', resetTokenExpiresAt: '' } },
+    { $set: { passwordHash, passwordChangedAt: new Date() }, $inc: { sessionVersion: 1 }, $unset: { resetTokenHash: '', resetTokenExpiresAt: '' } },
   );
   if (result.modifiedCount !== 1) throw new HttpError(400, INVALID_LINK_MESSAGE);
 }

@@ -84,7 +84,7 @@ test('user management HTTP, access policy and atomic mutation workflow (isolated
   const login = () => fetch(base + '/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'alpha@example.test', password: 'Test-password123' }) });
   try {
     await t.test('reader denied across list, profile, stats, audit, role and status APIs', async () => {
-      for (const path of ['/admin/users', '/admin/users/stats', `/admin/users/${readerId}`, `/admin/users/${readerId}/audit-logs`]) assert.equal((await request(path, oldReaderToken)).status, 403);
+      for (const path of ['/admin/audit-logs', '/admin/users?role=admin', '/admin/users', '/admin/users/stats', `/admin/users/${readerId}`, `/admin/users/${readerId}/audit-logs`]) assert.equal((await request(path, oldReaderToken)).status, 403);
       for (const path of ['role', 'status']) assert.equal((await request(`/admin/users/${readerId}/${path}`, oldReaderToken, {})).status, 403);
     });
     await t.test('validated literal search, filters, deterministic ordering and pagination', async () => {
@@ -138,6 +138,21 @@ test('user management HTTP, access policy and atomic mutation workflow (isolated
       failAudit = false;
       assert.equal(records.get(otherId)!.status, 'active'); assert.equal(records.get(otherId)!.sessionVersion, 0);
       assert.equal((await request(`/admin/users/${otherId}/status`, adminToken, { status: 'active', expectedStatus: 'suspended', reason: 'Stale request' })).status, 409);
+    });
+    await t.test('administrator directory and validated read-only global audit history', async () => {
+      const admins: any = await (await request('/admin/users?role=admin&search=Operator&status=active')).json();
+      assert.equal(admins.total, 1); assert.equal(admins.users[0]._id, adminId);
+      const logs: any = await (await request('/admin/audit-logs?action=role_change&pageSize=25')).json();
+      assert.equal(logs.total, 1); assert.equal(logs.logs[0].action, 'role_change'); assert.equal(logs.pageSize, 25);
+      const empty: any = await (await request('/admin/audit-logs?from=2000-01-01&to=2000-01-01')).json(); assert.equal(empty.total, 0);
+      for (const query of ['pageSize=51', 'page=0', 'action=delete', 'from=invalid', 'from=2026-03-01&to=2026-01-01', 'role=admin']) assert.equal((await request('/admin/audit-logs?' + query)).status, 400);
+      for (const method of ['POST', 'PATCH', 'DELETE']) {
+        for (const path of ['/admin/audit-logs', '/admin/audit-logs/507f1f77bcf86cd799439099']) {
+          const response = await fetch(base + path, { method, headers: { Authorization: `Bearer ${adminToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'role_change' }) });
+          assert.equal(response.status, 404);
+        }
+      }
+      assert.equal(audit.length, 3);
     });
   } finally {
     for (const original of originals.reverse()) original.object[original.key] = original.value;
