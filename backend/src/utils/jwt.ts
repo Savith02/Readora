@@ -7,6 +7,7 @@ export type Role = 'user' | 'admin';
 export interface AuthPayload {
   userId: string;
   role: Role;
+  sessionVersion?: number;
 }
 
 export interface VerifiedToken extends AuthPayload {
@@ -16,8 +17,8 @@ export interface VerifiedToken extends AuthPayload {
 
 const ALGORITHM = 'HS256';
 
-export function signToken({ userId, role }: AuthPayload): string {
-  return jwt.sign({ role }, env.JWT_SECRET, {
+export function signToken({ userId, role, sessionVersion = 0 }: AuthPayload): string {
+  return jwt.sign({ role, sessionVersion }, env.JWT_SECRET, {
     subject: userId,
     algorithm: ALGORITHM,
     expiresIn: env.JWT_EXPIRES_IN as SignOptions['expiresIn'],
@@ -30,5 +31,7 @@ export function verifyToken(token: string): VerifiedToken {
   if (typeof decoded === 'string' || !decoded.sub || typeof decoded.iat !== 'number' || (decoded.role !== 'user' && decoded.role !== 'admin')) {
     throw new jwt.JsonWebTokenError('invalid token payload');
   }
-  return { userId: decoded.sub, role: decoded.role, issuedAt: decoded.iat };
+  const sessionVersion = decoded.sessionVersion ?? 0;
+  if (!Number.isSafeInteger(sessionVersion) || sessionVersion < 0) throw new jwt.JsonWebTokenError('invalid session version');
+  return { userId: decoded.sub, role: decoded.role, issuedAt: decoded.iat, sessionVersion };
 }

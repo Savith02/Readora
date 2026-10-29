@@ -30,5 +30,8 @@ readingProgressSchema.index({ userId: 1, bookId: 1 }, { unique: true });
 // "Continue reading": a user's books, most recently read first.
 readingProgressSchema.index({ userId: 1, lastReadAt: -1 });
 
+readingProgressSchema.index({ lastReadAt: -1 });
+readingProgressSchema.index({ finishedAt: 1 });
+
 export type ReadingProgressDoc = InferSchemaType<typeof readingProgressSchema>;
 export const ReadingProgress = model('ReadingProgress', readingProgressSchema);

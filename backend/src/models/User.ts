@@ -16,6 +16,11 @@ const userSchema = new Schema(
     // Never returned unless a query asks for it with .select('+passwordHash').
     passwordHash: { type: String, required: true, select: false },
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
+    // Missing fields on legacy accounts are treated as active/version 0.
+    status: { type: String, enum: ['active', 'suspended'], default: 'active' },
+    suspensionReason: { type: String, maxlength: 1000, default: '' },
+    statusChangedAt: { type: Date, default: null },
+    sessionVersion: { type: Number, default: 0, min: 0, select: false },
 
     /** Login tokens issued before this moment are refused, so a password reset signs out every other session. */
     passwordChangedAt: { type: Date },
@@ -37,6 +42,10 @@ const userSchema = new Schema(
 
 // All-time leaderboard.
 userSchema.index({ totalPoints: -1 });
+
+userSchema.index({ role: 1, createdAt: -1 });
+userSchema.index({ role: 1, status: 1, createdAt: -1 });
+userSchema.index({ name: 1, _id: 1 });
 
 export type UserDoc = InferSchemaType<typeof userSchema>;
 export const User = model('User', userSchema);

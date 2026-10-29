@@ -60,9 +60,9 @@ export default function UserMenu({ user, onLogout }: UserMenuProps) {
         <div id={panelId} className="absolute right-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-xl border border-muted-line/70 bg-surface-raised text-ink shadow-lift">
           <div className="border-b border-muted-line/70 px-4 py-3">
             <p className="truncate font-semibold">{user.name}</p>
-            <p className="truncate text-xs text-muted">{user.email}</p>
+            <p className="truncate text-xs text-muted">{user.email}</p><p className="mt-2 text-xs font-semibold text-accent-ink">{user.role === 'admin' ? 'Administrator account' : 'Reader account'}</p>
           </div>
-          <Link to="/profile" className={ITEM}>
+          {user.role === 'admin' && <Link to="/admin/dashboard" className={ITEM}>Admin Dashboard</Link>}<Link to="/profile" className={ITEM}>
             <UserIcon size={16} aria-hidden="true" />
             Profile
           </Link>

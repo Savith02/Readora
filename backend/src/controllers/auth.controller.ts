@@ -1,4 +1,6 @@
 import bcrypt from 'bcryptjs';
+
+
 import type { RequestHandler } from 'express';
 import type { HydratedDocument } from 'mongoose';
 import { HttpError } from '../middleware/error.middleware';
@@ -15,7 +17,7 @@ import { BCRYPT_ROUNDS, hashPassword } from '../utils/password';
 const TIMING_HASH = bcrypt.hashSync('readora-timing-equaliser', BCRYPT_ROUNDS);
 
 /** The user fields that are safe to send to the browser (never the password hash). */
-const toPublicUser = (user: HydratedDocument<UserDoc>) => ({
+export const toPublicUser = (user: HydratedDocument<UserDoc>) => ({
   id: user.id as string,
   name: user.name,
   email: user.email,
@@ -27,17 +29,19 @@ const toPublicUser = (user: HydratedDocument<UserDoc>) => ({
 });
 
 const authResponse = (user: HydratedDocument<UserDoc>) => ({
-  token: signToken({ userId: user.id as string, role: user.role }),
+  token: signToken({ userId: user.id as string, role: user.role, sessionVersion: user.sessionVersion ?? 0 }),
   user: toPublicUser(user),
 });
 
 export const register: RequestHandler = async (req, res) => {
   const { name, email, password } = req.body as RegisterInput;
+  const role = 'user';
+
 
   if (await User.exists({ email })) throw new HttpError(409, 'An account with this email already exists');
 
   const passwordHash = await hashPassword(password);
-  const user = await User.create({ name, email, passwordHash });
+  const user = await User.create({ name, email, passwordHash, role });
 
   res.status(201).json(authResponse(user));
 };
@@ -45,9 +49,10 @@ export const register: RequestHandler = async (req, res) => {
 export const login: RequestHandler = async (req, res) => {
   const { email, password } = req.body as LoginInput;
 
-  const user = await User.findOne({ email }).select('+passwordHash');
+  const user = await User.findOne({ email }).select('+passwordHash +sessionVersion');
   const matches = await bcrypt.compare(password, user?.passwordHash ?? TIMING_HASH);
   if (!user || !matches) throw new HttpError(401, 'Invalid email or password');
+  if (user.status === 'suspended') throw new HttpError(403, 'Your account is suspended. Please contact support.');
 
   res.json(authResponse(user));
 };

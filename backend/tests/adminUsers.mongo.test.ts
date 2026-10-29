@@ -1,0 +1,184 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { createHash, randomBytes } from 'node:crypto';
+import type { AddressInfo } from 'node:net';
+import dotenv from 'dotenv';
+
+dotenv.config({ quiet: true });
+const run = process.env.RUN_MONGO_INTEGRATION === '1';
+// An explicit dbName override below ensures this test never uses the configured application DB.
+const uri = process.env.TEST_MONGO_URI ?? process.env.MONGO_URI;
+process.env.JWT_SECRET = 'isolated-integration-test-secret-at-least-32-chars';
+process.env.NODE_ENV = 'test';
+
+test('real MongoDB user management queries, suspension, audit and concurrent admin protection', { skip: !run, timeout: 90000 }, async () => {
+  if (!uri) throw new Error('Configure TEST_MONGO_URI or the existing backend/.env MONGO_URI.');
+  const database = `readora_um_test_${randomBytes(8).toString('hex')}`;
+  const mongoose = (await import('mongoose')).default;
+  const { app } = await import('../src/app.js');
+  const { User, ReadingProgress, GameResult, UserTask, Task, PointLog, Badge, AdminAuditLog, AdminMutationLock, PlatformSettings } = await import('../src/models/index.js');
+  const { hashPassword } = await import('../src/utils/password.js');
+  const { signToken } = await import('../src/utils/jwt.js');
+  const { changeUserAccess } = await import('../src/services/adminUsers.service.js');
+  let server: ReturnType<typeof app.listen> | undefined;
+  try {
+    await mongoose.connect(uri, { dbName: database, serverSelectionTimeoutMS: 8000 });
+    assert.equal(mongoose.connection.name, database);
+    await Promise.all(Object.values(mongoose.models).map(model => model.init()));
+    await AdminMutationLock.create({ _id: 'user-management', version: 0 });
+    const passwordHash = await hashPassword('Integration-Password123');
+    const admin = await User.create({ name: 'Test Operator', email: 'operator@example.test', passwordHash, role: 'admin' });
+    const reader = await User.create({ name: 'Reader Alpha', email: 'alpha@example.test', passwordHash, totalPoints: 25 });
+    const readerB = await User.create({ name: 'Reader Beta', email: 'beta@example.test', passwordHash });
+    // Legacy records must remain active even when the physical status/version fields are missing.
+    await User.collection.updateOne({ _id: readerB._id }, { $unset: { status: '', sessionVersion: '' } });
+    const badge = await Badge.create({ key: 'test-badge', name: 'Test badge', criteria: { metric: 'total_points', threshold: 25 } });
+    await User.updateOne({ _id: reader._id }, { $push: { badges: { badgeId: badge._id, earnedAt: new Date() } } });
+    const progress = await ReadingProgress.create({ userId: reader._id, bookId: 'test-book', title: 'Stored Book', author: 'Stored Author', progress: 100, finishedAt: new Date() });
+    await GameResult.create({ userId: reader._id, gameType: 'quiz', score: 4, maxScore: 5, won: true, pointsAwarded: 10 });
+    const task = await Task.create({ key: 'test-task', title: 'Stored Task', type: 'pages', target: 10, rewardPoints: 15 });
+    await UserTask.create({ userId: reader._id, taskId: task._id, periodKey: new Date().toISOString().slice(0, 10), completed: true, completedAt: new Date(), progress: 10, rewardClaimed: true });
+    await PointLog.create([{ userId: reader._id, points: 10, reason: 'game_win' }, { userId: reader._id, points: 15, reason: 'task_complete' }]);
+    server = app.listen(0, '127.0.0.1');
+    await new Promise<void>(resolve => server!.once('listening', resolve));
+    const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`;
+    const adminToken = signToken({ userId: admin.id, role: 'admin' });
+    const readerToken = signToken({ userId: reader.id, role: 'user' });
+    const call = (path: string, token = adminToken, body?: unknown) => fetch(base + path, { method: body ? 'PATCH' : 'GET', headers: { Authorization: `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
+    const ownProfile: any = await (await call('/admin/profile')).json();
+    assert.equal(ownProfile.profile.id, admin.id); assert.equal(ownProfile.profile.email, admin.email);
+    assert.equal(ownProfile.profile.createdAt, admin.createdAt.toISOString());
+    assert.equal(ownProfile.profile.passwordHash, undefined); assert.equal(ownProfile.profile.sessionVersion, undefined);
+    const beforeAdmin = await User.findById(admin._id).select('+passwordHash +sessionVersion').lean();
+    const savedProfile = await call(`/admin/profile?userId=${reader.id}`, adminToken, { name: '  Updated Test Operator  ' });
+    assert.equal(savedProfile.status, 200);
+    assert.equal((await User.findById(admin._id))!.name, 'Updated Test Operator');
+    assert.equal((await User.findById(reader._id))!.name, 'Reader Alpha');
+    const afterAdmin = await User.findById(admin._id).select('+passwordHash +sessionVersion').lean();
+    for (const field of ['role', 'status', 'email', 'passwordHash', 'sessionVersion', 'totalPoints'] as const) assert.deepEqual(afterAdmin![field], beforeAdmin![field]);
+    assert.equal((await call('/admin/profile', readerToken)).status, 403);
+    assert.equal((await call('/admin/profile', adminToken, { name: 'Unsafe change', role: 'user' })).status, 400);
+    assert.equal((await call('/auth/me')).status, 200);
+    const list: any = await (await call('/admin/users?role=user&status=active&search=Reader&sort=name_asc')).json();
+    assert.equal(list.total, 2); assert.equal(list.users[0].name, 'Reader Alpha'); assert.equal(list.users[1].status, 'active');
+    assert.equal(list.users[0].lastReadAt, progress.lastReadAt.toISOString());
+    assert.ok(!JSON.stringify(list).includes('passwordHash'));
+    for (let i = 0; i < 11; i++) await User.create({ name: `Paging ${String(i).padStart(2, '0')}`, email: `paging${i}@example.test`, passwordHash });
+    const page1: any = await (await call('/admin/users?search=Paging&pageSize=10&page=1&sort=name_asc')).json();
+    const page2: any = await (await call('/admin/users?search=Paging&pageSize=10&page=2&sort=name_asc')).json();
+    assert.equal(page1.users.length, 10); assert.equal(page2.users.length, 1); assert.equal(page1.total, 11);
+    assert.ok(!page1.users.some((row: any) => row._id === page2.users[0]._id));
+    const profile: any = await (await call(`/admin/users/${reader.id}`)).json();
+    assert.equal(profile.reading.started, 1); assert.equal(profile.reading.completed, 1); assert.equal(profile.games.played, 1); assert.equal(profile.games.wins, 1);
+    assert.equal(profile.tasks.completed, 1); assert.equal(profile.tasks.rewards, 15); assert.equal(profile.tasks.current[0].title, 'Stored Task');
+    assert.equal(profile.points.earned, 25); assert.equal(profile.user.badges[0].badgeId.name, 'Test badge');
+    assert.equal(profile.user.passwordHash, undefined); assert.equal(profile.user.sessionVersion, undefined);
+    assert.equal((await call('/admin/users', readerToken)).status, 403);
+    const beforeProgress = await ReadingProgress.findById(progress._id).lean();
+    const beforeLedger = await PointLog.find({ userId: reader._id }).lean();
+    assert.equal((await call(`/admin/users/${reader.id}/status`, adminToken, { status: 'suspended', expectedStatus: 'active', reason: 'Integration suspension' })).status, 200);
+    assert.equal((await call('/auth/me', readerToken)).status, 401);
+    assert.equal((await call(`/admin/users/${reader.id}/status`, adminToken, { status: 'active', expectedStatus: 'suspended', reason: 'Integration reactivation' })).status, 200);
+    assert.equal((await call('/auth/me', readerToken)).status, 401);
+    assert.deepEqual(await ReadingProgress.findById(progress._id).lean(), beforeProgress);
+    assert.deepEqual(await PointLog.find({ userId: reader._id }).lean(), beforeLedger);
+    assert.equal((await User.findById(reader._id))!.totalPoints, 25);
+    assert.equal(await AdminAuditLog.countDocuments({ targetUserId: reader._id }), 2);
+    const directory: any = await (await call('/admin/users?role=admin&search=Operator&status=active&sort=newest&pageSize=10')).json();
+    assert.equal(directory.total, 1); assert.equal(directory.users[0]._id, admin.id);
+    assert.equal((await call('/admin/audit-logs', readerToken)).status, 401); // reader token was invalidated above
+    const day = new Date().toISOString().slice(0, 10);
+    const history: any = await (await call(`/admin/audit-logs?action=suspend&from=${day}&to=${day}&pageSize=10`)).json();
+    assert.equal(history.total, 1); assert.equal(history.logs[0].administratorId.name, 'Updated Test Operator');
+    assert.equal(history.logs[0].targetUserId.name, 'Reader Alpha');
+    assert.equal(history.logs[0].administratorId.email, undefined);
+    const history2: any = await (await call('/admin/audit-logs?page=2&pageSize=10')).json(); assert.equal(history2.logs.length, 0); assert.equal(history2.total, 2);
+    const userHistory: any = await (await call(`/admin/users/${reader.id}/audit-logs`)).json(); assert.equal(userHistory.logs[0].targetUserId, reader.id);
+    for (const method of ['POST', 'PATCH', 'DELETE']) assert.equal((await fetch(base + '/admin/audit-logs', { method, headers: { Authorization: `Bearer ${adminToken}` } })).status, 404);
+    // Force a real audit failure after the user write. The MongoDB transaction must abort both.
+    const originalCreate = AdminAuditLog.create;
+    AdminAuditLog.create = (async () => { throw new Error('Injected audit failure'); }) as unknown as typeof AdminAuditLog.create;
+    try { await assert.rejects(changeUserAccess(admin.id, readerB.id, { kind: 'status', status: 'suspended', expectedStatus: 'active', reason: 'Audit rollback proof' })); }
+    finally { AdminAuditLog.create = originalCreate; }
+    assert.notEqual((await User.findById(readerB._id))!.status, 'suspended');
+    const secondAdmin = await User.create({ name: 'Second Operator', email: 'second@example.test', role: 'admin', passwordHash });
+    const demote = { kind: 'role' as const, role: 'user' as const, expectedRole: 'admin' as const, reason: 'Concurrent demotion test', password: 'Integration-Password123' };
+    const result = await Promise.allSettled([changeUserAccess(admin.id, secondAdmin.id, demote), changeUserAccess(secondAdmin.id, admin.id, demote)]);
+    assert.equal(result.filter(row => row.status === 'fulfilled').length, 1);
+    assert.equal(await User.countDocuments({ role: 'admin', status: { $ne: 'suspended' } }), 1);
+    assert.equal(await AdminAuditLog.countDocuments({ action: 'role_change' }), 1);
+    // Security fixtures are created only in this generated database, after admin-count checks.
+    const securityAdmin = await User.create({ name: 'Security Operator', email: 'security@example.test', role: 'admin', passwordHash });
+    await User.collection.updateOne({ _id: securityAdmin._id }, { $unset: { sessionVersion: '' } });
+    const oldSecurityToken = signToken({ userId: securityAdmin.id, role: 'admin' });
+    const post = (path: string, token: string, body: unknown) => fetch(base + path, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const securityLogin = (password: string) => post('/auth/login', '', { email: securityAdmin.email, password });
+    const choices = ['Replacement-Password123', 'Replacement-Password456'];
+    const passwordResults = await Promise.all(choices.map(password => post('/admin/security/change-password', oldSecurityToken, { currentPassword: 'Integration-Password123', newPassword: password, confirmPassword: password })));
+    assert.deepEqual(passwordResults.map(result => result.status).sort(), [200, 401]);
+    assert.equal(await AdminAuditLog.countDocuments({ targetUserId: securityAdmin._id, action: 'password_change' }), 1);
+    const acceptedPassword = choices[passwordResults.findIndex(result => result.status === 200)];
+    assert.equal((await call('/auth/me', oldSecurityToken)).status, 401);
+    assert.equal((await securityLogin('Integration-Password123')).status, 401);
+    const passwordLogin = await securityLogin(acceptedPassword); assert.equal(passwordLogin.status, 200);
+    const passwordToken = (await passwordLogin.json() as { token: string }).token;
+    const metadata: any = await (await call('/admin/security', passwordToken)).json();
+    assert.ok(metadata.security.passwordChangedAt); assert.deepEqual(Object.keys(metadata.security), ['passwordChangedAt']);
+    assert.equal((await post('/admin/security/sign-out-all', passwordToken, { currentPassword: 'Wrong123' })).status, 403);
+    assert.equal((await post('/admin/security/sign-out-all', passwordToken, { currentPassword: acceptedPassword })).status, 200);
+    assert.equal(await AdminAuditLog.countDocuments({ targetUserId: securityAdmin._id, action: 'sessions_revoked' }), 1);
+    assert.equal((await call('/auth/me', passwordToken)).status, 401);
+    const afterSignOut: any = await (await securityLogin(acceptedPassword)).json();
+    assert.equal((await call('/auth/me', afterSignOut.token)).status, 200);
+    const secret = randomBytes(32).toString('hex');
+    await User.updateOne({ _id: securityAdmin._id }, { $set: { resetTokenHash: createHash('sha256').update(secret).digest('hex'), resetTokenExpiresAt: new Date(Date.now() + 60000) } });
+    const reset = { token: `${securityAdmin.id}.${secret}`, password: 'Reset-Password789' };
+    assert.equal((await post('/auth/reset-password', '', reset)).status, 200);
+    assert.equal((await post('/auth/reset-password', '', reset)).status, 400);
+    assert.equal((await call('/auth/me', afterSignOut.token)).status, 401);
+    assert.equal((await securityLogin(acceptedPassword)).status, 401);
+    assert.equal((await securityLogin(reset.password)).status, 200);
+    await User.updateOne({ _id: securityAdmin._id }, { $set: { status: 'suspended' } });
+    assert.equal((await securityLogin(reset.password)).status, 403);
+    // Platform settings are exercised in the same isolated database, never the live singleton.
+    const { DEFAULT_PLATFORM_SETTINGS } = await import('@readora/shared');
+    const remainingAdmin = await User.findOne({ role: 'admin', status: { $ne: 'suspended' } }).select('+sessionVersion');
+    assert.ok(remainingAdmin);
+    const platformToken = signToken({ userId: remainingAdmin.id, role: 'admin', sessionVersion: remainingAdmin.sessionVersion ?? 0 });
+    assert.deepEqual(await (await call('/platform-settings', '')).json(), { settings: DEFAULT_PLATFORM_SETTINGS });
+    assert.equal(await PlatformSettings.countDocuments(), 0);
+    const readerBeforeSettings = await User.findById(reader._id).lean();
+    const settingsResults = await Promise.all(['Library One', 'Library Two'].map(displayName => call('/admin/platform-settings', platformToken, { revision: 0, settings: { ...DEFAULT_PLATFORM_SETTINGS, displayName } })));
+    assert.deepEqual(settingsResults.map(result => result.status).sort(), [200, 409]);
+    assert.equal(await PlatformSettings.countDocuments(), 1);
+    assert.equal(await AdminAuditLog.countDocuments({ action: 'platform_settings_update' }), 1);
+    const saved: any = await (await call('/admin/platform-settings', platformToken)).json();
+    assert.equal(saved.revision, 1);
+    assert.deepEqual(await (await call('/platform-settings', '')).json(), { settings: saved.settings });
+    assert.equal((await call('/admin/platform-settings', platformToken, saved)).status, 200); // no-op creates no duplicate audit
+    assert.equal(await AdminAuditLog.countDocuments({ action: 'platform_settings_update' }), 1);
+    AdminAuditLog.create = (async () => { throw new Error('Injected platform audit failure'); }) as unknown as typeof AdminAuditLog.create;
+    try { assert.equal((await call('/admin/platform-settings', platformToken, { revision: 1, settings: DEFAULT_PLATFORM_SETTINGS })).status, 500); }
+    finally { AdminAuditLog.create = originalCreate; }
+    assert.deepEqual(await (await call('/admin/platform-settings', platformToken)).json(), saved);
+    assert.equal(await AdminAuditLog.countDocuments({ action: 'platform_settings_update' }), 1);
+    const published = { ...DEFAULT_PLATFORM_SETTINGS, displayName: 'Public Library', logoStyle: 'app-icon', supportEmail: 'contact@example.test', announcementEnabled: true, announcementText: 'Upcoming maintenance window.' };
+    assert.equal((await call('/admin/platform-settings', platformToken, { revision: 1, settings: published })).status, 200);
+    assert.deepEqual(await (await call('/platform-settings', '')).json(), { settings: published });
+    assert.equal(await AdminAuditLog.countDocuments({ action: 'platform_settings_update' }), 2);
+    assert.deepEqual(await User.findById(reader._id).lean(), readerBeforeSettings);
+    assert.deepEqual(await ReadingProgress.findById(progress._id).lean(), beforeProgress);
+    assert.deepEqual(await PointLog.find({ userId: reader._id }).lean(), beforeLedger);
+    const signup = await post('/auth/register', '', { name: 'New Platform Reader', email: 'platform-reader@example.test', password: 'Platform-Reader123', role: 'admin' });
+    assert.equal(signup.status, 201);
+    const signupBody: any = await signup.json();
+    assert.equal(signupBody.user.role, 'user'); assert.equal(signupBody.user.dailyGoalPages, 20);
+    assert.equal((await call('/auth/me', signupBody.token)).status, 200);
+    for (const path of ['/admin/dashboard', '/admin/users', '/admin/profile', '/admin/security', '/admin/audit-logs', '/admin/platform-settings']) assert.equal((await call(path, signupBody.token)).status, 403);
+    assert.equal((await post('/auth/login', '', { email: 'platform-reader@example.test', password: 'Platform-Reader123' })).status, 200);
+  } finally {
+    if (server) await new Promise<void>((resolve, reject) => server!.close(error => error ? reject(error) : resolve()));
+    if (mongoose.connection.readyState === 1 && mongoose.connection.name === database && /^readora_um_test_[a-f0-9]{16}$/.test(database)) await mongoose.connection.dropDatabase();
+    await mongoose.disconnect();
+  }
+});

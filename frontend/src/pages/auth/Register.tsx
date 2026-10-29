@@ -35,6 +35,7 @@ export default function Register() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -42,7 +43,7 @@ export default function Register() {
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
 
-  if (user) return <Navigate to={destination} replace />;
+  if (user) return <Navigate to={user.role === 'admin' ? '/admin/dashboard' : destination.startsWith('/admin') ? '/' : destination} replace />;
 
   const focusFirstError = (found: FieldErrors) => {
     const order: Array<[keyof FieldErrors, RefObject<HTMLInputElement | null>]> = [
@@ -78,7 +79,7 @@ export default function Register() {
   return (
     <AuthShell
       title="Create your account"
-      subtitle="Read, play short breaks, and earn points for every page."
+      subtitle="Join Readora to read, play, and earn points."
       footer={
         <p>
           Already have an account?{' '}

@@ -8,3 +8,5 @@ export { ReadingProgress } from './ReadingProgress';
 export { Task } from './Task';
 export { User } from './User';
 export { UserTask } from './UserTask';
+export { AdminAuditLog, AdminMutationLock } from './AdminAuditLog';
+export { PlatformSettings } from './PlatformSettings';
