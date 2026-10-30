@@ -4,6 +4,7 @@ import AdminAuditLogs from '../../components/admin/AdminAuditLogs';
 import AdminPlatformSettings from '../../components/admin/AdminPlatformSettings';
 import { useEffect, useId, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { CalendarDays, Check, ChevronRight, CircleAlert, ClipboardList, Globe, Info, Loader2, Mail, RefreshCw, ShieldCheck, UserRound, Users } from 'lucide-react';
 import { fetchAdminProfile } from '../../api/adminProfile.api';
 import type { AdminProfile } from '../../api/adminProfile.api';
@@ -28,7 +29,9 @@ export default function AdminSettings() {
   const { user, updateAdminName } = useAuth();
   const [profile, setProfile] = useState<AdminProfile | null>(null);
   const [name, setName] = useState('');
-  const [section, setSection] = useState<Section>('profile');
+  const [params, setParams] = useSearchParams();
+  const section: Section = sections.find(item => item.key === params.get('section'))?.key ?? 'profile';
+  const setSection = (value: Section) => setParams(previous => { const next = new URLSearchParams(previous); next.set('section', value); return next; });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState('');
