@@ -39,7 +39,7 @@ export default function AdminLayout() {
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = previous; };
   }, [mobileOpen]);
-  const currentPage = location.pathname.startsWith('/admin/users') ? 'User Management' : location.pathname.endsWith('/dashboard') ? 'Dashboard' : modules.find(name => location.pathname.endsWith(`/${modulePath(name)}`)) ?? 'Administration';
+  const currentPage = location.pathname === '/admin/profile' ? 'My profile' : location.pathname.startsWith('/admin/users') ? 'User Management' : location.pathname.endsWith('/dashboard') ? 'Dashboard' : modules.find(name => location.pathname.endsWith(`/${modulePath(name)}`)) ?? 'Administration';
   const signOut = () => { closeDrawer(); logout(); navigate('/login', { replace: true }); };
 
   const navigation = (compact = false) => <nav aria-label="Administration" className="space-y-5 py-5">
@@ -56,7 +56,7 @@ export default function AdminLayout() {
     </div>)}
   </nav>;
   const profile = (compact = false) => <div className="shrink-0 border-t border-muted-line/60 p-3">
-    <Link to="/admin/settings" aria-label="Open your admin profile settings" title={compact ? 'Profile settings' : undefined} onClick={() => { if (mobileOpen) closeDrawer(); }} className={`flex items-center gap-3 rounded-xl bg-surface-sunken/60 p-2 transition hover:bg-accent/10 ${compact ? 'justify-center' : ''}`}>
+    <Link to="/admin/profile" aria-label="Open your admin profile" aria-current={location.pathname === '/admin/profile' ? 'page' : undefined} title={compact ? 'My profile' : undefined} onClick={() => { if (mobileOpen) closeDrawer(); }} className={`flex items-center gap-3 rounded-xl bg-surface-sunken/60 p-2 transition hover:bg-accent/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${compact ? 'justify-center' : ''}`}>
       <Avatar name={user?.name ?? 'Admin'} className="h-9 w-9 rounded-xl bg-accent/15 text-accent" />
       {!compact && <div className="min-w-0"><p className="truncate text-sm font-semibold" title={user?.name}>{user?.name}</p><p className="mt-0.5 text-[11px] text-muted">Administrator</p></div>}
     </Link>
@@ -82,7 +82,7 @@ export default function AdminLayout() {
     <div className={`min-w-0 ${collapsed ? 'lg:pl-20' : 'lg:pl-72'}`}>
       <header className="flex h-20 items-center justify-between gap-3 border-b border-muted-line/60 bg-surface/95 px-4 sm:px-8">
         <div className="flex min-w-0 items-center gap-3"><button type="button" aria-label="Open admin navigation" aria-haspopup="dialog" aria-controls="admin-mobile-navigation" aria-expanded={mobileOpen} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-surface-raised lg:hidden" onClick={() => { drawer.current?.showModal(); setMobileOpen(true); }}><Menu size={22} /></button><div className="flex min-w-0 items-center gap-2 text-xs"><span className="hidden text-muted sm:inline">Administration</span><ChevronRight size={13} className="hidden text-muted sm:block" aria-hidden="true" /><span className="truncate font-medium">{currentPage}</span></div></div>
-        <div className="flex shrink-0 items-center gap-3"><Link to="/" className="max-w-[7rem] truncate rounded-lg px-2 py-2 text-xs text-muted transition hover:text-accent sm:max-w-[12rem]">View {displayName} <span aria-hidden="true">&#8599;</span></Link><span className="h-6 w-px bg-muted-line" /><Avatar name={user?.name ?? 'Admin'} className="h-8 w-8 rounded-full bg-accent/15 text-accent" /></div>
+        <div className="flex shrink-0 items-center gap-3"><Link to="/" className="max-w-[7rem] truncate rounded-lg px-2 py-2 text-xs text-muted transition hover:text-accent sm:max-w-[12rem]">View {displayName} <span aria-hidden="true">&#8599;</span></Link><span className="h-6 w-px bg-muted-line" /><Link to="/admin/profile" aria-label="Open your admin profile" title="My profile" onClick={closeDrawer} className="flex h-11 w-11 items-center justify-center rounded-full transition hover:bg-accent/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"><Avatar name={user?.name ?? 'Admin'} className="h-8 w-8 rounded-full bg-accent/15 text-accent" /></Link></div>
       </header>
       <main id="admin-content" tabIndex={-1} className="mx-auto min-w-0 max-w-[1600px] p-4 outline-none sm:p-6 xl:p-8"><Outlet /></main>
     </div>
